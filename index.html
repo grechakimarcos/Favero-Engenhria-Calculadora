@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculadora de Precificação - Engenharia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root.dark {
+      --background: #1E1E2A;
+      --foreground: #F7F7F7;
+      --card: #24273A;
+      --card-foreground: #F7F7F7;
+      --primary: #4D7493;
+      --primary-foreground: #F7F7F7;
+      --secondary: #24273A;
+      --secondary-foreground: #F7F7F7;
+      --muted: #2E3E58;
+      --muted-foreground: #98A1AA;
+      --accent: #90ADC1;
+      --accent-foreground: #1E1E2A;
+      --border: #2E3E58;
+      --input: #2E3E58;
+      --ring: #90ADC1;
+      --hero-gradient-start: #1E1E2A;
+      --hero-gradient-end: #2E3E58;
+      --success: #10b981;
+      --success-foreground: #ecfdf5;
+      --warning: #fdba74;
+      --warning-foreground: #fff7ed;
+      --danger: #991b1b;
+      --danger-foreground: #fef2f2;
+    }
+
+    * { box-sizing: border-box; font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
+    
+    body { 
+      background: linear-gradient(135deg, var(--hero-gradient-start), var(--hero-gradient-end)); 
+      color: var(--foreground); 
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .container { max-width: 1250px; margin: 40px auto; padding: 20px; }
+
+    .header { 
+      background: var(--card); 
+      color: var(--card-foreground); 
+      padding: 32px; 
+      border-radius: 20px; 
+      margin-bottom: 30px; 
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    .header h1 { margin: 0 0 12px; font-size: 32px; font-weight: 700; background: linear-gradient(to right, var(--accent), #ffffff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .header p { margin: 0; color: var(--muted-foreground); font-size: 16px; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
+
+    .card { 
+      background: var(--card); 
+      border-radius: 20px; 
+      padding: 28px; 
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
+      border: 1px solid var(--border);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+    }
+    
+    .card h2 { margin-top: 0; font-size: 22px; color: var(--card-foreground); font-weight: 600; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+
+    label { display: block; margin-top: 16px; font-weight: 500; font-size: 14px; color: var(--card-foreground); }
+    
+    input, select { 
+      width: 100%; 
+      padding: 14px; 
+      margin-top: 8px; 
+      background-color: var(--input);
+      color: var(--foreground);
+      border: 1px solid var(--border); 
+      border-radius: 12px; 
+      font-size: 15px; 
+      transition: all 0.2s ease;
+      outline: none;
+    }
+    
+    input:focus, select:focus {
+      border-color: var(--ring);
+      box-shadow: 0 0 0 3px rgba(144, 173, 193, 0.2);
+    }
+
+    button { 
+      width: 100%; 
+      margin-top: 24px; 
+      padding: 16px; 
+      background: var(--primary); 
+      color: var(--primary-foreground); 
+      border: none; 
+      border-radius: 12px; 
+      font-size: 16px; 
+      font-weight: 600; 
+      cursor: pointer; 
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(77, 116, 147, 0.3);
+    }
+    button:hover { 
+      background: #5d8aa8; 
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(77, 116, 147, 0.4);
+    }
+    
+    .btn-secondary { background: var(--secondary); color: var(--secondary-foreground); border: 1px solid var(--border); box-shadow: none; }
+    .btn-secondary:hover { background: var(--muted); box-shadow: none; }
+    
+    .btn-danger { background: var(--danger); box-shadow: none; }
+    .btn-danger:hover { background: #b91c1c; }
+
+    .result-box { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    
+    .metric { 
+      background: var(--muted); 
+      border: 1px solid var(--border); 
+      border-radius: 14px; 
+      padding: 16px; 
+      transition: all 0.2s ease;
+    }
+    .metric:hover { border-color: var(--ring); }
+    .metric small { display: block; color: var(--muted-foreground); margin-bottom: 8px; font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .metric strong { font-size: 22px; color: var(--foreground); font-weight: 700; }
+    
+    .final { grid-column: span 2; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); }
+    .final strong { font-size: 32px; color: #34d399; }
+    
+    .alerta { margin-top: 20px; padding: 16px; border-radius: 12px; background: rgba(253, 186, 116, 0.1); border: 1px solid var(--warning); color: #fbbf24; font-size: 15px; font-weight: 500; }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+    th, td { border-bottom: 1px solid var(--border); padding: 14px 10px; text-align: left; }
+    th { background: var(--muted); color: var(--muted-foreground); font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
+    td { color: var(--foreground); }
+    tbody tr { transition: background 0.2s; }
+    tbody tr:hover { background: rgba(46, 62, 88, 0.4); }
+
+    .section { margin-top: 24px; }
+    
+    .linha-equipe { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 12px; align-items: end; margin-top: 16px; background: rgba(46, 62, 88, 0.2); padding: 16px; border-radius: 12px; border: 1px solid var(--border); }
+    .linha-equipe button { margin-top: 0; padding: 14px; }
+    
+    .hint { font-size: 13px; color: var(--muted-foreground); margin-top: 10px; line-height: 1.5; }
+    
+    @media (max-width: 900px) { 
+      .grid, .grid-3, .result-box, .linha-equipe { grid-template-columns: 1fr; } 
+      .final { grid-column: span 1; } 
+      .linha-equipe { padding-bottom: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Calculadora de Precificação</h1>
+      <p>Cálculo por composição da equipe, custo real, fatores, ticket mínimo, imposto e meta de faturamento.</p>
+    </header>
+
+    <main>
+      <section class="grid-3">
+        <div class="card">
+          <h2>Resumo do Escritório</h2>
+          <div class="metric"><small>Custo mensal total</small><strong id="custoMensal">R$ 0,00</strong></div><br>
+          <div class="metric"><small>Horas produtivas/mês</small><strong id="horasProdutivas">0h</strong></div><br>
+          <div class="metric"><small>Custo médio/hora</small><strong id="custoMedioHora">R$ 0,00</strong></div>
+        </div>
+        <div class="card">
+          <h2>Metas</h2>
+          <div class="metric"><small>Meta mensal</small><strong id="metaMensal">R$ 0,00</strong></div><br>
+          <div class="metric"><small>Meta semanal</small><strong id="metaSemanal">R$ 0,00</strong></div><br>
+          <div class="metric"><small>Meta diária</small><strong id="metaDiaria">R$ 0,00</strong></div>
+        </div>
+        <div class="card">
+          <h2>Rateio</h2>
+          <div class="metric"><small>Custos indiretos</small><strong id="custosIndiretos">R$ 0,00</strong></div><br>
+          <div class="metric"><small>Rateio indireto/hora</small><strong id="rateioHora">R$ 0,00</strong></div><br>
+          <div class="metric"><small>Imposto Simples</small><strong>6%</strong></div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Dados do Projeto</h2>
+
+          <label>Disciplina</label>
+          <select id="disciplina">
+            <option value="eletrico">Elétrico Residencial</option>
+            <option value="hidrossanitario">Hidrossanitário Residencial</option>
+            <option value="ppci">PPCI</option>
+            <option value="spda">SPDA</option>
+            <option value="telecom">Telecom/Rede lógica</option>
+            <option value="cftv">CFTV</option>
+            <option value="climatizacao">Climatização</option>
+            <option value="exaustao">Exaustão/Ventilação</option>
+            <option value="gas">Gás</option>
+          </select>
+
+          <label>Área do projeto (m²)</label>
+          <input type="number" id="area" value="200" min="1" />
+
+          <label>Horas manuais totais, opcional</label>
+          <input type="number" id="horasManuais" placeholder="Deixe em branco para calcular por m²" min="0" />
+          <div class="hint">As horas finais calculadas pelos fatores serão distribuídas proporcionalmente entre os colaboradores informados abaixo.</div>
+
+          <label>Fator de Revisão</label>
+          <select id="revisao">
+            <option value="0">0 - Sem revisão extra</option>
+            <option value="1">1 - Baixa +10%</option>
+            <option value="2">2 - Média +20%</option>
+            <option value="3">3 - Alta +35%</option>
+            <option value="4">4 - Crítica +50%</option>
+          </select>
+
+          <label>Fator de Aprovação</label>
+          <select id="aprovacao">
+            <option value="0">0 - Sem aprovação</option>
+            <option value="1">1 - Simples +10%</option>
+            <option value="2">2 - Média +20%</option>
+            <option value="3">3 - Complexa +35%</option>
+          </select>
+
+          <label>CMP - Complexidade</label>
+          <select id="cmp">
+            <option value="1">1 - Simples</option>
+            <option value="2">2 - Médio +15%</option>
+            <option value="3">3 - Alto padrão +30%</option>
+            <option value="4">4 - Complexo +50%</option>
+            <option value="5">5 - Muito complexo +80%</option>
+          </select>
+
+          <label>Tipo Comercial</label>
+          <select id="tipo">
+            <option value="fluxo">Fluxo -10%</option>
+            <option value="estrategico">Estratégico -15%</option>
+            <option value="padrao" selected>Padrão</option>
+            <option value="premium">Premium +20%</option>
+            <option value="problema">Problema +35%</option>
+          </select>
+        </div>
+
+        <div class="card">
+          <h2>Equipe do Projeto</h2>
+          <div id="equipeProjeto"></div>
+          <button class="btn-secondary" onclick="adicionarLinhaEquipe()">+ Adicionar colaborador</button>
+          <button onclick="calcularTudo()">Calcular Projeto</button>
+          <div class="hint">Você pode informar mais de um projetista. Exemplo: Lucas 8h, Adriel 3h, Reinaldo 1h. Isso muda o custo interno do projeto.</div>
+        </div>
+      </section>
+
+      <section class="card section">
+        <h2>Resultado do Projeto</h2>
+        <div class="result-box">
+          <div class="metric"><small>Horas base por m²</small><strong id="horasPorM2">0h/m²</strong></div>
+          <div class="metric"><small>Horas base</small><strong id="horasBase">0h</strong></div>
+          <div class="metric"><small>Horas finais com fatores</small><strong id="horasFinais">0h</strong></div>
+          <div class="metric"><small>Custo interno equipe</small><strong id="custoInterno">R$ 0,00</strong></div>
+          <div class="metric"><small>Valor comercial por hora</small><strong id="valorHora">R$ 0,00</strong></div>
+          <div class="metric"><small>Valor por ref. comercial</small><strong id="valorCalculado">R$ 0,00</strong></div>
+          <div class="metric"><small>Valor mínimo custo interno</small><strong id="valorMinimoCusto">R$ 0,00</strong></div>
+          <div class="metric"><small>Ticket mínimo</small><strong id="ticketMinimo">R$ 0,00</strong></div>
+          <div class="metric"><small>Imposto 6%</small><strong id="imposto">R$ 0,00</strong></div>
+          <div class="metric"><small>Valor líquido</small><strong id="valorLiquido">R$ 0,00</strong></div>
+          <div class="metric final"><small>Valor final sugerido</small><strong id="valorFinal">R$ 0,00</strong></div>
+        </div>
+        <div class="alerta" id="observacao">Preencha os dados e clique em calcular.</div>
+      </section>
+
+      <section class="card section">
+        <h2>Composição de Custo da Equipe no Projeto</h2>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead><tr><th>Colaborador</th><th>Horas inf.</th><th>Horas ajust.</th><th>Custo real/h</th><th>Custo no projeto</th></tr></thead>
+            <tbody id="tabelaEquipeProjeto"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card section">
+        <h2>Custo/hora real por colaborador</h2>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead><tr><th>Colaborador</th><th>Custo mensal</th><th>Horas/mês</th><th>Custo direto/h</th><th>Rateio/h</th><th>Custo real/h</th></tr></thead>
+            <tbody id="tabelaColaboradores"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card section">
+        <h2>Base de Disciplinas</h2>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead><tr><th>Disciplina</th><th>Área ref.</th><th>Horas ref.</th><th>Horas/m²</th><th>Valor base</th><th>Ticket mínimo</th></tr></thead>
+            <tbody id="tabelaDisciplinas"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const impostoSimples = 0.06;
+    const metaMensal = 30000;
+    const semanasMes = 4.3;
+    const diasUteisMes = 22;
+    const multiplicadorMinimoCusto = 1.80;
+
+    const colaboradores = {
+      Reinaldo: { custo: 8000, horas: 180 },
+      Adriel: { custo: 2080, horas: 120 },
+      Vinicius: { custo: 2104, horas: 120 },
+      Lucas: { custo: 1400, horas: 100 }
+    };
+
+    const custosIndiretos = { Arieli: 1499, Estrutura: 2595 };
+
+    const disciplinas = {
+      eletrico: { nome: "Elétrico Residencial", areaRef: 200, horasRef: 12, valorBase: 950, ticketMinimo: 950 },
+      hidrossanitario: { nome: "Hidrossanitário Residencial", areaRef: 200, horasRef: 18, valorBase: 2200, ticketMinimo: 2200 },
+      ppci: { nome: "PPCI", areaRef: 200, horasRef: 20, valorBase: 2200, ticketMinimo: 1800 },
+      spda: { nome: "SPDA", areaRef: 200, horasRef: 10, valorBase: 1200, ticketMinimo: 950 },
+      telecom: { nome: "Telecom/Rede lógica", areaRef: 200, horasRef: 8, valorBase: 950, ticketMinimo: 850 },
+      cftv: { nome: "CFTV", areaRef: 200, horasRef: 8, valorBase: 950, ticketMinimo: 850 },
+      climatizacao: { nome: "Climatização", areaRef: 200, horasRef: 16, valorBase: 1800, ticketMinimo: 1500 },
+      exaustao: { nome: "Exaustão/Ventilação", areaRef: 200, horasRef: 14, valorBase: 1700, ticketMinimo: 1400 },
+      gas: { nome: "Gás", areaRef: 200, horasRef: 12, valorBase: 1500, ticketMinimo: 1200 }
+    };
+
+    const fatorRevisao = { 0: 1.00, 1: 1.10, 2: 1.20, 3: 1.35, 4: 1.50 };
+    const fatorAprovacao = { 0: 1.00, 1: 1.10, 2: 1.20, 3: 1.35 };
+    const fatorCmp = { 1: 1.00, 2: 1.15, 3: 1.30, 4: 1.50, 5: 1.80 };
+    const fatorTipo = { fluxo: 0.90, estrategico: 0.85, padrao: 1.00, premium: 1.20, problema: 1.35 };
+
+    function moeda(valor) { return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+    function totalHorasProdutivas() { return Object.values(colaboradores).reduce((s, c) => s + c.horas, 0); }
+    function totalCustosDiretos() { return Object.values(colaboradores).reduce((s, c) => s + c.custo, 0); }
+    function totalCustosIndiretos() { return Object.values(custosIndiretos).reduce((s, v) => s + v, 0); }
+    function rateioIndiretoHora() { return totalCustosIndiretos() / totalHorasProdutivas(); }
+    function custoRealHora(nome) { const c = colaboradores[nome]; return (c.custo / c.horas) + rateioIndiretoHora(); }
+
+    function carregarResumo() {
+      const custoMensal = totalCustosDiretos() + totalCustosIndiretos();
+      const horas = totalHorasProdutivas();
+      document.getElementById('custoMensal').innerText = moeda(custoMensal);
+      document.getElementById('horasProdutivas').innerText = horas + 'h';
+      document.getElementById('custoMedioHora').innerText = moeda(custoMensal / horas);
+      document.getElementById('metaMensal').innerText = moeda(metaMensal);
+      document.getElementById('metaSemanal').innerText = moeda(metaMensal / semanasMes);
+      document.getElementById('metaDiaria').innerText = moeda(metaMensal / diasUteisMes);
+      document.getElementById('custosIndiretos').innerText = moeda(totalCustosIndiretos());
+      document.getElementById('rateioHora').innerText = moeda(rateioIndiretoHora());
+    }
+
+    function opcoesColaboradores(selecionado = '') {
+      return Object.keys(colaboradores).map(nome => `<option value="${nome}" ${nome === selecionado ? 'selected' : ''}>${nome}</option>`).join('');
+    }
+
+    function adicionarLinhaEquipe(nome = 'Lucas', horas = 0) {
+      const div = document.createElement('div');
+      div.className = 'linha-equipe';
+      div.innerHTML = `
+        <div><label>Colaborador</label><select class="colab-projeto">${opcoesColaboradores(nome)}</select></div>
+        <div><label>Horas</label><input type="number" class="horas-colab" value="${horas}" min="0" step="0.5"></div>
+        <div><label>Custo/h</label><input type="text" class="custo-hora-view" disabled></div>
+        <div><label>Custo</label><input type="text" class="custo-total-view" disabled></div>
+        <button class="btn-danger" onclick="this.parentElement.remove(); calcularTudo();">Remover</button>
+      `;
+      document.getElementById('equipeProjeto').appendChild(div);
+      div.querySelector('.colab-projeto').addEventListener('change', calcularTudo);
+      div.querySelector('.horas-colab').addEventListener('input', calcularTudo);
+      calcularTudo();
+    }
+
+    function carregarTabelas() {
+      const tbodyColab = document.getElementById('tabelaColaboradores');
+      tbodyColab.innerHTML = '';
+      for (const nome in colaboradores) {
+        const c = colaboradores[nome];
+        const direto = c.custo / c.horas;
+        const rateio = rateioIndiretoHora();
+        const real = direto + rateio;
+        tbodyColab.innerHTML += `<tr><td>${nome}</td><td>${moeda(c.custo)}</td><td>${c.horas}h</td><td>${moeda(direto)}</td><td>${moeda(rateio)}</td><td><strong>${moeda(real)}</strong></td></tr>`;
+      }
+
+      const tbodyDisc = document.getElementById('tabelaDisciplinas');
+      tbodyDisc.innerHTML = '';
+      for (const key in disciplinas) {
+        const d = disciplinas[key];
+        const horasM2 = d.horasRef / d.areaRef;
+        tbodyDisc.innerHTML += `<tr><td>${d.nome}</td><td>${d.areaRef} m²</td><td>${d.horasRef}h</td><td>${horasM2.toFixed(3)}h/m²</td><td>${moeda(d.valorBase)}</td><td>${moeda(d.ticketMinimo)}</td></tr>`;
+      }
+    }
+
+    function calcularTudo() {
+      carregarResumo();
+      carregarTabelas();
+
+      const disciplinaKey = document.getElementById('disciplina').value;
+      const area = Number(document.getElementById('area').value);
+      const horasManuais = Number(document.getElementById('horasManuais').value);
+      const revisao = Number(document.getElementById('revisao').value);
+      const aprovacao = Number(document.getElementById('aprovacao').value);
+      const cmp = Number(document.getElementById('cmp').value);
+      const tipo = document.getElementById('tipo').value;
+      const d = disciplinas[disciplinaKey];
+      if (!area || area <= 0) return;
+
+      const horasPorM2 = d.horasRef / d.areaRef;
+      const horasBaseReferencia = horasManuais > 0 ? horasManuais : area * horasPorM2;
+      const linhas = [...document.querySelectorAll('.linha-equipe')];
+      let horasInformadasEquipe = 0;
+      linhas.forEach(l => horasInformadasEquipe += Number(l.querySelector('.horas-colab').value || 0));
+
+      const horasBase = horasInformadasEquipe > 0 ? horasInformadasEquipe : horasBaseReferencia;
+      const fatorEsforco = fatorRevisao[revisao] * fatorAprovacao[aprovacao] * fatorCmp[cmp];
+      const horasFinais = horasBase * fatorEsforco;
+      const fatorDistribuicao = horasInformadasEquipe > 0 ? horasFinais / horasInformadasEquipe : 1;
+
+      let custoInterno = 0;
+      const tbodyEquipe = document.getElementById('tabelaEquipeProjeto');
+      tbodyEquipe.innerHTML = '';
+
+      linhas.forEach(l => {
+        const nome = l.querySelector('.colab-projeto').value;
+        const horas = Number(l.querySelector('.horas-colab').value || 0);
+        const horasAjustadas = horas * fatorDistribuicao;
+        const custoHora = custoRealHora(nome);
+        const custoTotal = horasAjustadas * custoHora;
+        custoInterno += custoTotal;
+        l.querySelector('.custo-hora-view').value = moeda(custoHora);
+        l.querySelector('.custo-total-view').value = moeda(custoTotal);
+        tbodyEquipe.innerHTML += `<tr><td>${nome}</td><td>${horas.toFixed(2)}h</td><td>${horasAjustadas.toFixed(2)}h</td><td>${moeda(custoHora)}</td><td><strong>${moeda(custoTotal)}</strong></td></tr>`;
+      });
+
+      if (linhas.length === 0 || horasInformadasEquipe === 0) {
+        custoInterno = horasFinais * ((totalCustosDiretos() + totalCustosIndiretos()) / totalHorasProdutivas());
+        tbodyEquipe.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--muted-foreground);">Sem equipe informada. Usando custo médio do escritório.</td></tr>`;
+      }
+
+      const valorHoraComercial = d.valorBase / d.horasRef;
+      const valorReferenciaComercial = horasFinais * valorHoraComercial * fatorTipo[tipo];
+      const valorMinimoPorCusto = custoInterno * multiplicadorMinimoCusto;
+      const valorFinal = Math.max(valorReferenciaComercial, valorMinimoPorCusto, d.ticketMinimo);
+      const imposto = valorFinal * impostoSimples;
+      const valorLiquido = valorFinal - imposto;
+
+      document.getElementById('horasPorM2').innerText = horasPorM2.toFixed(3) + 'h/m²';
+      document.getElementById('horasBase').innerText = horasBase.toFixed(2) + 'h';
+      document.getElementById('horasFinais').innerText = horasFinais.toFixed(2) + 'h';
+      document.getElementById('custoInterno').innerText = moeda(custoInterno);
+      document.getElementById('valorHora').innerText = moeda(valorHoraComercial);
+      document.getElementById('valorCalculado').innerText = moeda(valorReferenciaComercial);
+      document.getElementById('valorMinimoCusto').innerText = moeda(valorMinimoPorCusto);
+      document.getElementById('ticketMinimo').innerText = moeda(d.ticketMinimo);
+      document.getElementById('imposto').innerText = moeda(imposto);
+      document.getElementById('valorFinal').innerText = moeda(valorFinal);
+      document.getElementById('valorLiquido').innerText = moeda(valorLiquido);
+
+      let texto = `Base: ${d.nome}. Horas finais: ${horasFinais.toFixed(2)}h. Custo interno da equipe: ${moeda(custoInterno)}.`;
+      texto += ` O valor final considera o maior entre referência comercial, custo interno com multiplicador ${multiplicadorMinimoCusto}x e ticket mínimo.`;
+      document.getElementById('observacao').innerText = texto;
+    }
+
+    document.getElementById('disciplina').addEventListener('change', calcularTudo);
+    document.getElementById('area').addEventListener('input', calcularTudo);
+    document.getElementById('horasManuais').addEventListener('input', calcularTudo);
+    document.getElementById('revisao').addEventListener('change', calcularTudo);
+    document.getElementById('aprovacao').addEventListener('change', calcularTudo);
+    document.getElementById('cmp').addEventListener('change', calcularTudo);
+    document.getElementById('tipo').addEventListener('change', calcularTudo);
+
+    adicionarLinhaEquipe('Lucas', 8);
+    adicionarLinhaEquipe('Adriel', 3);
+    adicionarLinhaEquipe('Reinaldo', 1);
+    calcularTudo();
+  </script>
+</body>
+</html>
