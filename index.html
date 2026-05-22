@@ -422,7 +422,7 @@
       let horasInformadasEquipe = 0;
       linhas.forEach(l => horasInformadasEquipe += Number(l.querySelector('.horas-colab').value || 0));
 
-      const horasBase = horasInformadasEquipe > 0 ? horasInformadasEquipe : horasBaseReferencia;
+      const horasBase = horasBaseReferencia;
       const fatorEsforco = fatorRevisao[revisao] * fatorAprovacao[aprovacao] * fatorCmp[cmp];
       const horasFinais = horasBase * fatorEsforco;
       const fatorDistribuicao = horasInformadasEquipe > 0 ? horasFinais / horasInformadasEquipe : 1;
