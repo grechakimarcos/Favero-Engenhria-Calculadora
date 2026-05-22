@@ -58,7 +58,7 @@
     .header h1 { margin: 0 0 12px; font-size: 32px; font-weight: 700; background: linear-gradient(to right, var(--accent), #ffffff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .header p { margin: 0; color: var(--muted-foreground); font-size: 16px; }
 
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;}
     .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
 
     .card { 
@@ -138,6 +138,8 @@
     .final { grid-column: span 2; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); }
     .final strong { font-size: 32px; color: #34d399; }
     
+    .determinante { margin-top: 10px; padding: 12px; background: rgba(144, 173, 193, 0.1); border: 1px solid var(--ring); border-radius: 10px; color: var(--ring); font-weight: 500; font-size: 14px; text-align: center; grid-column: span 2; }
+
     .alerta { margin-top: 20px; padding: 16px; border-radius: 12px; background: rgba(253, 186, 116, 0.1); border: 1px solid var(--warning); color: #fbbf24; font-size: 15px; font-weight: 500; }
     
     table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
@@ -154,9 +156,11 @@
     
     .hint { font-size: 13px; color: var(--muted-foreground); margin-top: 10px; line-height: 1.5; }
     
+    .parameters-header { margin-top: 60px; margin-bottom: 20px; font-size: 24px; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+
     @media (max-width: 900px) { 
       .grid, .grid-3, .result-box, .linha-equipe { grid-template-columns: 1fr; } 
-      .final { grid-column: span 1; } 
+      .final, .determinante { grid-column: span 1; } 
       .linha-equipe { padding-bottom: 24px; }
     }
   </style>
@@ -165,31 +169,11 @@
   <div class="container">
     <header class="header">
       <h1>Calculadora de Precificação</h1>
-      <p>Cálculo por composição da equipe, custo real, fatores, ticket mínimo, imposto e meta de faturamento.</p>
+      <p>Defina os dados e a equipe para calcular o valor sugerido do projeto.</p>
     </header>
 
     <main>
-      <section class="grid-3">
-        <div class="card">
-          <h2>Resumo do Escritório</h2>
-          <div class="metric"><small>Custo mensal total</small><strong id="custoMensal">R$ 0,00</strong></div><br>
-          <div class="metric"><small>Horas produtivas/mês</small><strong id="horasProdutivas">0h</strong></div><br>
-          <div class="metric"><small>Custo médio/hora</small><strong id="custoMedioHora">R$ 0,00</strong></div>
-        </div>
-        <div class="card">
-          <h2>Metas</h2>
-          <div class="metric"><small>Meta mensal</small><strong id="metaMensal">R$ 0,00</strong></div><br>
-          <div class="metric"><small>Meta semanal</small><strong id="metaSemanal">R$ 0,00</strong></div><br>
-          <div class="metric"><small>Meta diária</small><strong id="metaDiaria">R$ 0,00</strong></div>
-        </div>
-        <div class="card">
-          <h2>Rateio</h2>
-          <div class="metric"><small>Custos indiretos</small><strong id="custosIndiretos">R$ 0,00</strong></div><br>
-          <div class="metric"><small>Rateio indireto/hora</small><strong id="rateioHora">R$ 0,00</strong></div><br>
-          <div class="metric"><small>Imposto Simples</small><strong>6%</strong></div>
-        </div>
-      </section>
-
+      <!-- SEÇÃO PRINCIPAL: CALCULADORA -->
       <section class="grid">
         <div class="card">
           <h2>Dados do Projeto</h2>
@@ -207,13 +191,12 @@
             <option value="gas">Gás</option>
           </select>
 
-          <label>Área do projeto (m²)</label>
-          <input type="number" id="area" value="200" min="1" />
+          <label>Área do projeto (m²) - Padrão de cálculo</label>
+          <input type="number" id="area" value="200" min="0" placeholder="Deixe 0 para ignorar área" />
 
-          <label>Horas manuais totais, opcional</label>
+          <label>Horas manuais totais (Sobrescreve a Área)</label>
           <input type="number" id="horasManuais" placeholder="Deixe em branco para calcular por m²" min="0" />
-          <div class="hint">As horas finais calculadas pelos fatores serão distribuídas proporcionalmente entre os colaboradores informados abaixo.</div>
-
+          
           <label>Fator de Revisão</label>
           <select id="revisao">
             <option value="0">0 - Sem revisão extra</option>
@@ -252,14 +235,16 @@
 
         <div class="card">
           <h2>Equipe do Projeto</h2>
+          <div class="hint" style="margin-top: 0; margin-bottom: 16px;">
+            Distribua as horas finais entre a equipe. Se você **zerar a área e horas manuais**, as horas informadas aqui ditarão o tempo total do projeto.
+          </div>
           <div id="equipeProjeto"></div>
           <button class="btn-secondary" onclick="adicionarLinhaEquipe()">+ Adicionar colaborador</button>
           <button onclick="calcularTudo()">Calcular Projeto</button>
-          <div class="hint">Você pode informar mais de um projetista. Exemplo: Lucas 8h, Adriel 3h, Reinaldo 1h. Isso muda o custo interno do projeto.</div>
         </div>
       </section>
 
-      <section class="card section">
+      <section class="card section" style="border: 2px solid var(--primary); box-shadow: 0 15px 40px rgba(0,0,0,0.3);">
         <h2>Resultado do Projeto</h2>
         <div class="result-box">
           <div class="metric"><small>Horas base por m²</small><strong id="horasPorM2">0h/m²</strong></div>
@@ -268,11 +253,18 @@
           <div class="metric"><small>Custo interno equipe</small><strong id="custoInterno">R$ 0,00</strong></div>
           <div class="metric"><small>Valor comercial por hora</small><strong id="valorHora">R$ 0,00</strong></div>
           <div class="metric"><small>Valor por ref. comercial</small><strong id="valorCalculado">R$ 0,00</strong></div>
-          <div class="metric"><small>Valor mínimo custo interno</small><strong id="valorMinimoCusto">R$ 0,00</strong></div>
+          <div class="metric"><small>Valor mínimo custo interno (x1.8)</small><strong id="valorMinimoCusto">R$ 0,00</strong></div>
           <div class="metric"><small>Ticket mínimo</small><strong id="ticketMinimo">R$ 0,00</strong></div>
           <div class="metric"><small>Imposto 6%</small><strong id="imposto">R$ 0,00</strong></div>
-          <div class="metric"><small>Valor líquido</small><strong id="valorLiquido">R$ 0,00</strong></div>
-          <div class="metric final"><small>Valor final sugerido</small><strong id="valorFinal">R$ 0,00</strong></div>
+          <div class="metric"><small>Valor líquido final</small><strong id="valorLiquido">R$ 0,00</strong></div>
+          
+          <div class="metric final">
+            <small>Valor final sugerido</small>
+            <strong id="valorFinal">R$ 0,00</strong>
+          </div>
+          <div class="determinante" id="fatorDeterminante">
+            Definido por: --
+          </div>
         </div>
         <div class="alerta" id="observacao">Preencha os dados e clique em calcular.</div>
       </section>
@@ -281,9 +273,33 @@
         <h2>Composição de Custo da Equipe no Projeto</h2>
         <div style="overflow-x: auto;">
           <table>
-            <thead><tr><th>Colaborador</th><th>Horas inf.</th><th>Horas ajust.</th><th>Custo real/h</th><th>Custo no projeto</th></tr></thead>
+            <thead><tr><th>Colaborador</th><th>Horas inf.</th><th>Horas ajustadas (Fator)</th><th>Custo real/h</th><th>Custo no projeto</th></tr></thead>
             <tbody id="tabelaEquipeProjeto"></tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- SEÇÃO SECUNDÁRIA: PARÂMETROS DO SISTEMA -->
+      <h2 class="parameters-header">⚙️ Parâmetros do Sistema</h2>
+
+      <section class="grid-3">
+        <div class="card">
+          <h2>Resumo do Escritório</h2>
+          <div class="metric"><small>Custo mensal total</small><strong id="custoMensal">R$ 0,00</strong></div><br>
+          <div class="metric"><small>Horas produtivas/mês</small><strong id="horasProdutivas">0h</strong></div><br>
+          <div class="metric"><small>Custo médio/hora</small><strong id="custoMedioHora">R$ 0,00</strong></div>
+        </div>
+        <div class="card">
+          <h2>Metas</h2>
+          <div class="metric"><small>Meta mensal</small><strong id="metaMensal">R$ 0,00</strong></div><br>
+          <div class="metric"><small>Meta semanal</small><strong id="metaSemanal">R$ 0,00</strong></div><br>
+          <div class="metric"><small>Meta diária</small><strong id="metaDiaria">R$ 0,00</strong></div>
+        </div>
+        <div class="card">
+          <h2>Rateio</h2>
+          <div class="metric"><small>Custos indiretos</small><strong id="custosIndiretos">R$ 0,00</strong></div><br>
+          <div class="metric"><small>Rateio indireto/hora</small><strong id="rateioHora">R$ 0,00</strong></div><br>
+          <div class="metric"><small>Imposto Simples</small><strong>6%</strong></div>
         </div>
       </section>
 
@@ -414,15 +430,26 @@
       const cmp = Number(document.getElementById('cmp').value);
       const tipo = document.getElementById('tipo').value;
       const d = disciplinas[disciplinaKey];
-      if (!area || area <= 0) return;
 
       const horasPorM2 = d.horasRef / d.areaRef;
-      const horasBaseReferencia = horasManuais > 0 ? horasManuais : area * horasPorM2;
+      
       const linhas = [...document.querySelectorAll('.linha-equipe')];
       let horasInformadasEquipe = 0;
       linhas.forEach(l => horasInformadasEquipe += Number(l.querySelector('.horas-colab').value || 0));
 
-      const horasBase = horasBaseReferencia;
+      // NOVA HIERARQUIA DE HORAS BASE: 
+      // 1. Horas Manuais (se preenchido)
+      // 2. Área do Projeto (se preenchido e > 0)
+      // 3. Horas Informadas da Equipe (se os dois acima estiverem vazios/0)
+      let horasBase = 0;
+      if (horasManuais > 0) {
+        horasBase = horasManuais;
+      } else if (area > 0) {
+        horasBase = area * horasPorM2;
+      } else if (horasInformadasEquipe > 0) {
+        horasBase = horasInformadasEquipe;
+      }
+
       const fatorEsforco = fatorRevisao[revisao] * fatorAprovacao[aprovacao] * fatorCmp[cmp];
       const horasFinais = horasBase * fatorEsforco;
       const fatorDistribuicao = horasInformadasEquipe > 0 ? horasFinais / horasInformadasEquipe : 1;
@@ -451,9 +478,20 @@
       const valorHoraComercial = d.valorBase / d.horasRef;
       const valorReferenciaComercial = horasFinais * valorHoraComercial * fatorTipo[tipo];
       const valorMinimoPorCusto = custoInterno * multiplicadorMinimoCusto;
+      
       const valorFinal = Math.max(valorReferenciaComercial, valorMinimoPorCusto, d.ticketMinimo);
       const imposto = valorFinal * impostoSimples;
       const valorLiquido = valorFinal - imposto;
+
+      // Definir qual foi a métrica que venceu:
+      let determinanteText = "";
+      if (valorFinal === valorMinimoPorCusto && valorMinimoPorCusto > 0) {
+        determinanteText = "🎯 Definido pelo Custo da Equipe (x" + multiplicadorMinimoCusto + ")";
+      } else if (valorFinal === d.ticketMinimo) {
+        determinanteText = "🛡️ Definido pelo Ticket Mínimo da Disciplina";
+      } else {
+        determinanteText = "📊 Definido pelo Valor Comercial de Referência";
+      }
 
       document.getElementById('horasPorM2').innerText = horasPorM2.toFixed(3) + 'h/m²';
       document.getElementById('horasBase').innerText = horasBase.toFixed(2) + 'h';
@@ -466,9 +504,9 @@
       document.getElementById('imposto').innerText = moeda(imposto);
       document.getElementById('valorFinal').innerText = moeda(valorFinal);
       document.getElementById('valorLiquido').innerText = moeda(valorLiquido);
+      document.getElementById('fatorDeterminante').innerText = determinanteText;
 
       let texto = `Base: ${d.nome}. Horas finais: ${horasFinais.toFixed(2)}h. Custo interno da equipe: ${moeda(custoInterno)}.`;
-      texto += ` O valor final considera o maior entre referência comercial, custo interno com multiplicador ${multiplicadorMinimoCusto}x e ticket mínimo.`;
       document.getElementById('observacao').innerText = texto;
     }
 
