@@ -1,174 +1,652 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="dark">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Calculadora de Precificação - Engenharia</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <title>ERP de Precificação — Fávero Engenharia</title>
+  <meta name="description" content="Sistema profissional de precificação por esforço técnico para escritórios de engenharia. Calcule custos reais, margens e preços por colaborador." />
+  <meta name="robots" content="noindex" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- jsPDF + AutoTable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <!-- SheetJS (Excel) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <h1>Calculadora de Precificação</h1>
-      <p>Defina os dados e a equipe para calcular o valor sugerido do projeto.</p>
-    </header>
+<div class="app-layout">
 
-    <main>
-      <!-- SEÇÃO PRINCIPAL: CALCULADORA -->
-      <section class="grid">
-        <div class="card">
-          <h2>Dados do Projeto</h2>
-
-          <label>Disciplina</label>
-          <select id="disciplina">
-            <option value="eletrico">Elétrico Residencial</option>
-            <option value="hidrossanitario">Hidrossanitário Residencial</option>
-            <option value="ppci">PPCI</option>
-            <option value="spda">SPDA</option>
-            <option value="telecom">Telecom/Rede lógica</option>
-            <option value="cftv">CFTV</option>
-            <option value="climatizacao">Climatização</option>
-            <option value="exaustao">Exaustão/Ventilação</option>
-            <option value="gas">Gás</option>
-          </select>
-
-          <label>Área do projeto (m²) - Padrão de cálculo</label>
-          <input type="number" id="area" value="200" min="0" placeholder="Deixe 0 para ignorar área" />
-
-          <label>Horas manuais totais (Sobrescreve a Área)</label>
-          <input type="number" id="horasManuais" placeholder="Deixe em branco para calcular por m²" min="0" />
-          
-          <label>Fator de Revisão</label>
-          <select id="revisao">
-            <option value="0">0 - Sem revisão extra</option>
-            <option value="1">1 - Baixa +10%</option>
-            <option value="2">2 - Média +20%</option>
-            <option value="3">3 - Alta +35%</option>
-            <option value="4">4 - Crítica +50%</option>
-          </select>
-
-          <label>Fator de Aprovação</label>
-          <select id="aprovacao">
-            <option value="0">0 - Sem aprovação</option>
-            <option value="1">1 - Simples +10%</option>
-            <option value="2">2 - Média +20%</option>
-            <option value="3">3 - Complexa +35%</option>
-          </select>
-
-          <label>CMP - Complexidade</label>
-          <select id="cmp">
-            <option value="1">1 - Simples</option>
-            <option value="2">2 - Médio +15%</option>
-            <option value="3">3 - Alto padrão +30%</option>
-            <option value="4">4 - Complexo +50%</option>
-            <option value="5">5 - Muito complexo +80%</option>
-          </select>
-
-          <label>Tipo Comercial</label>
-          <select id="tipo">
-            <option value="fluxo">Fluxo -10%</option>
-            <option value="estrategico">Estratégico -15%</option>
-            <option value="padrao" selected>Padrão</option>
-            <option value="premium">Premium +20%</option>
-            <option value="problema">Problema +35%</option>
-          </select>
+  <!-- ══════════════════════════════════════════════════════
+       APP HEADER
+  ══════════════════════════════════════════════════════ -->
+  <header class="app-header" role="banner">
+    <div class="header-inner">
+      <a class="brand" href="#" aria-label="Fávero Engenharia — ERP de Precificação">
+        <div class="brand-icon" aria-hidden="true">⚙️</div>
+        <div class="brand-text">
+          <span class="brand-name">Fávero Engenharia</span>
+          <span class="brand-sub">ERP de Precificação Técnica</span>
         </div>
+      </a>
+      <div class="header-actions">
+        <button id="btn-new-project" class="btn btn-ghost btn-sm" title="Iniciar novo projeto">
+          ＋ Novo Projeto
+        </button>
+      </div>
+    </div>
+  </header>
 
-        <div class="card">
-          <h2>Equipe do Projeto</h2>
-          <div class="hint" style="margin-top: 0; margin-bottom: 16px;">
-            Se você informar horas para a equipe, elas <strong>substituirão</strong> o cálculo de m² e ditarão o tempo total do projeto.
-          </div>
-          <div id="equipeProjeto"></div>
-          <button class="btn-secondary" onclick="adicionarLinhaEquipe()">+ Adicionar colaborador</button>
-          <button onclick="calcularTudo()">Calcular Projeto</button>
+  <!-- ══════════════════════════════════════════════════════
+       STEPPER NAVIGATION
+  ══════════════════════════════════════════════════════ -->
+  <nav class="stepper-wrapper" aria-label="Etapas do projeto">
+    <div class="stepper" role="tablist">
+      <div class="step-item active" role="tab" aria-selected="true" aria-controls="panel-0" data-step="0">
+        <div class="step-number" aria-hidden="true">1</div>
+        <div class="step-label">Projeto</div>
+      </div>
+      <div class="step-item" role="tab" aria-selected="false" aria-controls="panel-1" data-step="1">
+        <div class="step-number" aria-hidden="true">2</div>
+        <div class="step-label">Equipe</div>
+      </div>
+      <div class="step-item" role="tab" aria-selected="false" aria-controls="panel-2" data-step="2">
+        <div class="step-number" aria-hidden="true">3</div>
+        <div class="step-label">Custos</div>
+      </div>
+      <div class="step-item" role="tab" aria-selected="false" aria-controls="panel-3" data-step="3">
+        <div class="step-number" aria-hidden="true">4</div>
+        <div class="step-label">Resultado</div>
+      </div>
+      <div class="step-item" role="tab" aria-selected="false" aria-controls="panel-4" data-step="4">
+        <div class="step-number" aria-hidden="true">5</div>
+        <div class="step-label">Relatório</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════
+       MAIN CONTENT
+  ══════════════════════════════════════════════════════ -->
+  <main class="main-content" id="main-content" role="main">
+
+    <!-- ─────────────────────────────────────────────────────
+         STEP 1 — DADOS DO PROJETO
+    ───────────────────────────────────────────────────── -->
+    <section class="step-panel active" id="panel-0" role="tabpanel" aria-labelledby="step-tab-0">
+      <div class="panel-header">
+        <div>
+          <h1 class="panel-title">📋 Dados do Projeto</h1>
+          <p class="panel-subtitle">Defina as características técnicas e comerciais do projeto</p>
         </div>
-      </section>
+      </div>
 
-      <section class="card section" style="border: 2px solid var(--primary); box-shadow: 0 15px 40px rgba(0,0,0,0.3);">
-        <h2>Resultado do Projeto</h2>
-        <div class="result-box">
-          <div class="metric"><small>Horas base por m²</small><strong id="horasPorM2">0h/m²</strong></div>
-          <div class="metric"><small>Horas base</small><strong id="horasBase">0h</strong></div>
-          <div class="metric"><small>Horas finais com fatores</small><strong id="horasFinais">0h</strong></div>
-          <div class="metric"><small>Custo interno equipe</small><strong id="custoInterno">R$ 0,00</strong></div>
-          <div class="metric"><small>Valor comercial por hora</small><strong id="valorHora">R$ 0,00</strong></div>
-          <div class="metric"><small>Valor por ref. comercial</small><strong id="valorCalculado">R$ 0,00</strong></div>
-          <div class="metric"><small>Valor mínimo custo interno (x1.8)</small><strong id="valorMinimoCusto">R$ 0,00</strong></div>
-          <div class="metric"><small>Ticket mínimo</small><strong id="ticketMinimo">R$ 0,00</strong></div>
-          <div class="metric"><small>Imposto 6%</small><strong id="imposto">R$ 0,00</strong></div>
-          <div class="metric"><small>Valor líquido final</small><strong id="valorLiquido">R$ 0,00</strong></div>
-          
-          <div class="metric final">
-            <small>Valor final sugerido</small>
-            <strong id="valorFinal">R$ 0,00</strong>
-          </div>
-          <div class="determinante" id="fatorDeterminante">
-            Definido por: --
-          </div>
+      <div class="card">
+        <h2>Informações Gerais</h2>
+        <div id="step1-content">
+          <!-- Rendered dynamically by UI.renderStep1() -->
         </div>
-        <div class="alerta" id="observacao">Preencha os dados e clique em calcular.</div>
-      </section>
+      </div>
 
-      <section class="card section">
-        <h2>Composição de Custo da Equipe no Projeto</h2>
-        <div style="overflow-x: auto;">
-          <table>
-            <thead><tr><th>Colaborador</th><th>Horas inf.</th><th>Horas ajustadas (Fator)</th><th>Custo real/h</th><th>Custo no projeto</th></tr></thead>
-            <tbody id="tabelaEquipeProjeto"></tbody>
+      <div class="step-nav">
+        <div class="step-nav-left"></div>
+        <div class="step-nav-right">
+          <button class="btn btn-primary btn-next-step" data-next="1">
+            Próximo: Equipe →
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────────
+         STEP 2 — EQUIPE DO PROJETO
+    ───────────────────────────────────────────────────── -->
+    <section class="step-panel" id="panel-1" role="tabpanel" aria-labelledby="step-tab-1">
+      <div class="panel-header">
+        <div>
+          <h1 class="panel-title">👥 Equipe do Projeto</h1>
+          <p class="panel-subtitle">Informe as horas de cada colaborador neste projeto</p>
+        </div>
+        <button id="add-team-member-btn" class="btn btn-secondary btn-sm">
+          + Adicionar Colaborador ao Projeto
+        </button>
+      </div>
+
+      <!-- Hours Preview -->
+      <div id="step2-hours-preview" class="card card-accent" style="margin-bottom: 24px;">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Team Allocation -->
+      <div class="card" style="margin-bottom: 24px;">
+        <h2>📌 Alocação no Projeto
+          <span class="badge badge-primary" id="team-count-badge">0 membros</span>
+        </h2>
+        <div class="hint" style="margin-bottom: 16px; font-size: 13px; color: var(--text-muted);">
+          💡 As horas da equipe têm <strong>prioridade máxima</strong> sobre área e horas manuais. Se informadas, ditarão o tempo total do projeto.
+        </div>
+        <div id="step2-team-list">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Collaborator Master Data -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+          <h2 style="margin-bottom:0; border:none; padding:0;">🧑‍💼 Cadastro de Colaboradores</h2>
+          <button id="add-collaborator-btn" class="btn btn-secondary btn-sm">+ Novo Colaborador</button>
+        </div>
+        <div class="table-wrapper">
+          <table aria-label="Colaboradores cadastrados">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Cargo</th>
+                <th>Custo Mensal</th>
+                <th>Horas/Mês</th>
+                <th>Produtividade</th>
+                <th>Custo Direto/h</th>
+                <th>Rateio/h</th>
+                <th>Custo Real/h</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="colabs-table-body">
+              <tr><td colspan="9" class="table-empty">Carregando...</td></tr>
+            </tbody>
           </table>
         </div>
-      </section>
+      </div>
 
-      <!-- SEÇÃO SECUNDÁRIA: PARÂMETROS DO SISTEMA -->
-      <h2 class="parameters-header">⚙️ Parâmetros do Sistema</h2>
+      <div class="step-nav">
+        <div class="step-nav-left">
+          <button class="btn btn-secondary btn-prev-step" data-prev="0">← Projeto</button>
+        </div>
+        <div class="step-nav-right">
+          <button class="btn btn-primary btn-next-step" data-next="2">Próximo: Custos →</button>
+        </div>
+      </div>
+    </section>
 
-      <section class="grid-3">
+    <!-- ─────────────────────────────────────────────────────
+         STEP 3 — CUSTOS DO PROJETO
+    ───────────────────────────────────────────────────── -->
+    <section class="step-panel" id="panel-2" role="tabpanel" aria-labelledby="step-tab-2">
+      <div class="panel-header">
+        <div>
+          <h1 class="panel-title">💰 Custos e Margens</h1>
+          <p class="panel-subtitle">Despesas diretas, custos indiretos e margem de lucro desejada</p>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom: 24px;">
         <div class="card">
-          <h2>Resumo do Escritório</h2>
-          <div class="metric"><small>Custo mensal total</small><strong id="custoMensal">R$ 0,00</strong></div><br>
-          <div class="metric"><small>Horas produtivas/mês</small><strong id="horasProdutivas">0h</strong></div><br>
-          <div class="metric"><small>Custo médio/hora</small><strong id="custoMedioHora">R$ 0,00</strong></div>
+          <h2>📎 Despesas Diretas do Projeto</h2>
+          <div id="step3-content">
+            <!-- Rendered dynamically by UI.renderStep3() -->
+          </div>
+        </div>
+        <div class="card card-accent">
+          <h2>🏢 Resumo do Escritório</h2>
+          <div class="grid-2" style="gap: 14px;">
+            <div class="metric">
+              <small>Custo Mensal Total</small>
+              <strong id="office-custo-mensal-s3">—</strong>
+            </div>
+            <div class="metric">
+              <small>Horas Produtivas/Mês</small>
+              <strong id="office-horas-prod-s3">—</strong>
+            </div>
+            <div class="metric">
+              <small>Rateio Indireto/h</small>
+              <strong id="office-rateio-s3">—</strong>
+            </div>
+            <div class="metric metric-accent">
+              <small>Meta Mensal</small>
+              <strong id="office-meta-s3">—</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-nav">
+        <div class="step-nav-left">
+          <button class="btn btn-secondary btn-prev-step" data-prev="1">← Equipe</button>
+        </div>
+        <div class="step-nav-right">
+          <button class="btn btn-primary btn-next-step" data-next="3">Próximo: Resultado →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────────
+         STEP 4 — RESULTADO / DASHBOARD
+    ───────────────────────────────────────────────────── -->
+    <section class="step-panel" id="panel-3" role="tabpanel" aria-labelledby="step-tab-3">
+      <div class="panel-header">
+        <div>
+          <h1 class="panel-title">📊 Dashboard de Resultado</h1>
+          <p class="panel-subtitle">Indicadores financeiros completos do projeto</p>
+        </div>
+      </div>
+
+      <!-- Main KPIs -->
+      <div class="kpi-grid" style="margin-bottom: 24px;">
+        <div class="kpi-block kpi-final" id="kpi-block-final">
+          <small>Preço Final Sugerido</small>
+          <strong id="kpi-valor-final">R$ —</strong>
+          <div class="kpi-sub" id="kpi-determinante">—</div>
+        </div>
+        <div class="kpi-block">
+          <small>Custo Interno Total</small>
+          <strong id="kpi-custo-total">R$ —</strong>
+        </div>
+        <div class="kpi-block">
+          <small>Lucro Bruto</small>
+          <strong id="kpi-lucro-bruto">R$ —</strong>
+        </div>
+        <div class="kpi-block">
+          <small>Lucro Líquido</small>
+          <strong id="kpi-lucro-liq">R$ —</strong>
+        </div>
+        <div class="kpi-block kpi-success">
+          <small>Margem Bruta</small>
+          <strong id="kpi-margem-bruta">—</strong>
+        </div>
+        <div class="kpi-block">
+          <small>Mark-up</small>
+          <strong id="kpi-markup">—</strong>
+        </div>
+        <div class="kpi-block">
+          <small>Rentabilidade</small>
+          <strong id="kpi-rentabilidade">—</strong>
+        </div>
+        <div class="kpi-block kpi-info">
+          <small>Preço Mínimo/hora</small>
+          <strong id="kpi-ponto-eq">—</strong>
+        </div>
+      </div>
+
+      <!-- Financial health alerts (danger/warning/success) -->
+      <div id="kpi-alertas" style="margin-bottom: 20px;"></div>
+
+      <!-- Secondary KPIs — Hours &amp; Pricing Details -->
+      <div class="grid-2" style="margin-bottom: 24px;">
+        <div class="card">
+          <h2>⏱️ Análise de Horas</h2>
+          <div class="grid-2" style="gap: 14px;">
+            <div class="metric"><small>Fonte das Horas</small><strong id="kpi-fonte-horas">—</strong></div>
+            <div class="metric"><small>Horas Base</small><strong id="kpi-horas-base">—</strong></div>
+            <div class="metric"><small>Fator de Esforço</small><strong id="kpi-fator-esforco">—</strong></div>
+            <div class="metric metric-accent"><small>Horas Finais</small><strong id="kpi-horas-finais">—</strong></div>
+          </div>
         </div>
         <div class="card">
-          <h2>Metas</h2>
-          <div class="metric"><small>Meta mensal</small><strong id="metaMensal">R$ 0,00</strong></div><br>
-          <div class="metric"><small>Meta semanal</small><strong id="metaSemanal">R$ 0,00</strong></div><br>
-          <div class="metric"><small>Meta diária</small><strong id="metaDiaria">R$ 0,00</strong></div>
+          <h2>💵 Candidatos de Preço</h2>
+          <div class="grid-2" style="gap: 14px;">
+            <div class="metric"><small>Ref. Comercial</small><strong id="kpi-ref-comercial">—</strong></div>
+            <div class="metric"><small>Custo × 1.8</small><strong id="kpi-custo-min">—</strong></div>
+            <div class="metric"><small>Ticket Mínimo</small><strong id="kpi-ticket-min">—</strong></div>
+            <div class="metric"><small>Impostos (6%)</small><strong id="kpi-imposto">—</strong></div>
+          </div>
+          <div class="determinant-banner" style="margin-top: 14px; font-size: 13px;" id="kpi-determinante-banner">
+            <span id="kpi-valor-liq">Valor líquido: R$ —</span>
+          </div>
         </div>
-        <div class="card">
-          <h2>Rateio</h2>
-          <div class="metric"><small>Custos indiretos</small><strong id="custosIndiretos">R$ 0,00</strong></div><br>
-          <div class="metric"><small>Rateio indireto/hora</small><strong id="rateioHora">R$ 0,00</strong></div><br>
-          <div class="metric"><small>Imposto Simples</small><strong>6%</strong></div>
-        </div>
-      </section>
+      </div>
 
-      <section class="card section">
-        <h2>Custo/hora real por colaborador</h2>
-        <div style="overflow-x: auto;">
-          <table>
-            <thead><tr><th>Colaborador</th><th>Custo mensal</th><th>Horas/mês</th><th>Custo direto/h</th><th>Rateio/h</th><th>Custo real/h</th></tr></thead>
-            <tbody id="tabelaColaboradores"></tbody>
+      <!-- Charts -->
+      <div class="charts-grid" style="margin-bottom: 24px;">
+        <div class="chart-card">
+          <h3>🍩 Composição de Custos</h3>
+          <div class="chart-container">
+            <canvas id="chart-custo-composicao" aria-label="Gráfico de composição de custos"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>📊 Candidatos de Preço</h3>
+          <div class="chart-container">
+            <canvas id="chart-candidatos" aria-label="Gráfico comparativo de candidatos de preço"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team Breakdown Table -->
+      <div class="card" style="margin-bottom: 24px;">
+        <h2>👥 Composição de Custo da Equipe</h2>
+        <div class="table-wrapper">
+          <table aria-label="Composição de custo da equipe no projeto">
+            <thead>
+              <tr>
+                <th>Colaborador</th>
+                <th>Cargo</th>
+                <th>Horas Informadas</th>
+                <th>Horas Ajustadas (fator)</th>
+                <th>Custo Real/h</th>
+                <th>Custo no Projeto</th>
+              </tr>
+            </thead>
+            <tbody id="result-team-body">
+              <tr><td colspan="6" class="table-empty">Calcule o projeto para ver os resultados.</td></tr>
+            </tbody>
           </table>
         </div>
-      </section>
+      </div>
 
-      <section class="card section">
-        <h2>Base de Disciplinas</h2>
-        <div style="overflow-x: auto;">
-          <table>
-            <thead><tr><th>Disciplina</th><th>Área ref.</th><th>Horas ref.</th><th>Horas/m²</th><th>Valor base</th><th>Ticket mínimo</th></tr></thead>
-            <tbody id="tabelaDisciplinas"></tbody>
+      <!-- Individual Pricing Table -->
+      <div class="card" style="margin-bottom: 24px;">
+        <h2>👤 Precificação por Colaborador Individual</h2>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          Preço sugerido caso o projeto seja executado individualmente por cada colaborador, com a margem de lucro configurada na etapa anterior.
+        </p>
+        <div class="table-wrapper">
+          <table aria-label="Precificação individual por colaborador">
+            <thead>
+              <tr>
+                <th>Colaborador</th>
+                <th>Cargo</th>
+                <th>Custo Real/h</th>
+                <th>Custo Total Interno</th>
+                <th>Preço Sugerido</th>
+              </tr>
+            </thead>
+            <tbody id="individual-pricing-body">
+              <tr><td colspan="5" class="table-empty">—</td></tr>
+            </tbody>
           </table>
         </div>
-      </section>
-    </main>
+      </div>
+
+      <!-- Office Summary Strip -->
+      <div class="office-strip">
+        <div class="office-strip-item"><small>Custo Mensal</small><strong id="office-custo-mensal">—</strong></div>
+        <div class="office-strip-item"><small>Horas Prod./Mês</small><strong id="office-horas-prod">—</strong></div>
+        <div class="office-strip-item"><small>Rateio/h</small><strong id="office-rateio-hora">—</strong></div>
+        <div class="office-strip-item"><small>Custos Indiretos</small><strong id="office-custos-ind">—</strong></div>
+        <div class="office-strip-item"><small>Meta Mensal</small><strong id="office-meta-mensal">—</strong></div>
+        <div class="office-strip-item"><small>Meta Semanal</small><strong id="office-meta-semanal">—</strong></div>
+        <div class="office-strip-item"><small>Meta Diária</small><strong id="office-meta-diaria">—</strong></div>
+      </div>
+
+      <!-- Disciplines Baseline Table -->
+      <div class="card" style="margin-top: 24px;">
+        <h2>📐 Base de Disciplinas</h2>
+        <div class="table-wrapper">
+          <table aria-label="Base de referência de disciplinas">
+            <thead>
+              <tr>
+                <th>Disciplina</th>
+                <th>Área Ref.</th>
+                <th>Horas Ref.</th>
+                <th>Horas/m²</th>
+                <th>Valor Base</th>
+                <th>Ticket Mínimo</th>
+              </tr>
+            </thead>
+            <tbody id="disciplines-table-body">
+              <tr><td colspan="6" class="table-empty">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="step-nav">
+        <div class="step-nav-left">
+          <button class="btn btn-secondary btn-prev-step" data-prev="2">← Custos</button>
+        </div>
+        <div class="step-nav-right">
+          <button class="btn btn-primary btn-next-step" data-next="4">Próximo: Relatório →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────────
+         STEP 5 — RELATÓRIO E EXPORTAÇÃO
+    ───────────────────────────────────────────────────── -->
+    <section class="step-panel" id="panel-4" role="tabpanel" aria-labelledby="step-tab-4">
+      <div class="panel-header">
+        <div>
+          <h1 class="panel-title">📄 Relatório e Exportação</h1>
+          <p class="panel-subtitle">Exporte o resultado em PDF ou Excel e salve no histórico</p>
+        </div>
+      </div>
+
+      <!-- Report Preview -->
+      <div id="step5-summary" style="margin-bottom: 28px;">
+        <!-- Rendered dynamically by UI.renderStep5() -->
+      </div>
+
+      <!-- Export Actions -->
+      <div class="card">
+        <h2>📥 Exportar Relatório</h2>
+        <div class="grid-3">
+          <button id="btn-export-pdf" class="btn btn-danger btn-lg btn-full" aria-label="Exportar em PDF">
+            📄 Exportar PDF
+          </button>
+          <button id="btn-export-excel" class="btn btn-success btn-lg btn-full" aria-label="Exportar em Excel">
+            📊 Exportar Excel
+          </button>
+          <button id="btn-save-history" class="btn btn-primary btn-lg btn-full" aria-label="Salvar no histórico">
+            💾 Salvar no Histórico
+          </button>
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 16px;">
+          ⚠️ Os arquivos PDF e Excel serão baixados diretamente. O histórico é salvo localmente no navegador.
+        </p>
+      </div>
+
+      <div class="step-nav">
+        <div class="step-nav-left">
+          <button class="btn btn-secondary btn-prev-step" data-prev="3">← Resultado</button>
+        </div>
+        <div class="step-nav-right">
+          <button id="btn-new-project-2" class="btn btn-ghost" onclick="App.Store.resetProject(); App.Main.goToStep(0);">
+            ＋ Novo Projeto
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════
+         HISTÓRICO DE PROJETOS (always visible below steps)
+    ══════════════════════════════════════════════════════ -->
+    <section id="history-section" aria-labelledby="history-heading">
+      <div class="history-header">
+        <h2 class="history-title" id="history-heading">🗂️ Histórico de Projetos</h2>
+      </div>
+
+      <!-- History Charts -->
+      <div class="charts-grid" style="margin-bottom: 24px;">
+        <div class="chart-card">
+          <h3>📈 Evolução de Valores</h3>
+          <div class="chart-container" id="chart-historico-wrapper">
+            <canvas id="chart-historico" aria-label="Evolução de valores por projeto"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>⏱️ Horas Previstas vs. Realizadas</h3>
+          <div class="chart-container" id="chart-horas-wrapper">
+            <canvas id="chart-horas-comparativo" aria-label="Comparativo de horas previstas e realizadas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- History Table -->
+      <div class="card">
+        <div class="table-wrapper">
+          <table aria-label="Histórico de projetos calculados">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Projeto</th>
+                <th>Cliente</th>
+                <th>Disciplina</th>
+                <th>Horas Previstas</th>
+                <th>Horas Realizadas</th>
+                <th>Acurácia</th>
+                <th>Valor Final</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body">
+              <tr><td colspan="9" class="table-empty">Nenhum projeto salvo ainda.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- AI Integration notice -->
+      <div class="card" style="margin-top: 20px; border-color: var(--info-dim); background: rgba(99,102,241,0.04);">
+        <h2 style="color: var(--info);">🤖 Integração com IA (Em Desenvolvimento)</h2>
+        <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.7;">
+          O sistema já está estruturado para aprender com os projetos anteriores.
+          Cada projeto salvo gera um registro com as características técnicas e o resultado real.
+          Quando a API de IA for integrada (<code>App.Config.AI_ENDPOINT</code>), o sistema poderá
+          <strong>estimar automaticamente as horas necessárias</strong> para novos projetos com base no histórico.
+        </p>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 10px;">
+          Registre as <em>horas realizadas</em> na tabela acima ao concluir cada projeto para alimentar o modelo de aprendizado.
+        </p>
+      </div>
+    </section>
+
+  </main><!-- /main-content -->
+  <!-- ══════════════════════════════════════════════════════
+       KEYBOARD SHORTCUT BAR (hidden until keyboard use detected)
+  ══════════════════════════════════════════════════════ -->
+  <div id="kbd-bar" class="kbd-bar" role="complementary" aria-label="Atalhos de teclado">
+    <span class="kbd-bar-title">Atalhos:</span>
+    <span class="kbd-hint"><kbd>Alt</kbd>+<kbd>→</kbd> Próximo</span>
+    <span class="kbd-hint"><kbd>Alt</kbd>+<kbd>←</kbd> Anterior</span>
+    <span class="kbd-hint"><kbd>Ctrl</kbd>+<kbd>↵</kbd> Resultado</span>
+    <span class="kbd-hint"><kbd>Alt</kbd>+<kbd>A</kbd> Add membro</span>
+    <span class="kbd-hint"><kbd>Esc</kbd> Fechar modal</span>
+    <span class="kbd-hint"><kbd>Tab</kbd> Navegar campos</span>
   </div>
 
-  <script src="script.js"></script>
+</div><!-- /app-layout -->
+
+<!-- ══════════════════════════════════════════════════════
+     MODAL — COLLABORATOR EDIT/CREATE
+══════════════════════════════════════════════════════ -->
+<div id="modal-collaborator" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-colab-title">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-colab-title">Colaborador</h2>
+      <button class="modal-close" id="modal-colab-cancel" aria-label="Fechar modal">✕</button>
+    </div>
+    <input type="hidden" id="modal-colab-id" />
+    <div class="form-grid-2" style="gap: 16px;">
+      <div class="form-group" style="grid-column: span 2;">
+        <label for="modal-colab-nome">Nome Completo <span style="color: var(--danger);">*</span></label>
+        <input type="text" id="modal-colab-nome" placeholder="Ex: João Silva" maxlength="60" />
+      </div>
+      <div class="form-group">
+        <label for="modal-colab-cargo">Cargo / Função</label>
+        <input type="text" id="modal-colab-cargo" placeholder="Ex: Engenheiro Pleno" maxlength="60" />
+      </div>
+      <div class="form-group">
+        <label for="modal-colab-custo">Custo Mensal (R$) <span style="color: var(--danger);">*</span></label>
+        <input type="number" id="modal-colab-custo" min="0" step="50" placeholder="0" />
+      </div>
+      <div class="form-group">
+        <label for="modal-colab-horas">Horas Produtivas/Mês <span style="color: var(--danger);">*</span></label>
+        <input type="number" id="modal-colab-horas" min="1" max="300" step="1" value="160" />
+      </div>
+      <div class="form-group">
+        <label for="modal-colab-prod">Produtividade (%) <span class="label-hint">— 100% = máximo</span></label>
+        <input type="number" id="modal-colab-prod" min="10" max="150" step="5" value="100" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="modal-colab-cancel-btn" onclick="App.UI.closeCollaboratorModal()">Cancelar</button>
+      <button class="btn btn-primary" id="modal-colab-save">Salvar Colaborador</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MODULES (load order matters)
+══════════════════════════════════════════════════════ -->
+<script src="modules/config.js"></script>
+<script src="modules/store.js"></script>
+<script src="modules/calculator.js"></script>
+<script src="modules/charts.js"></script>
+<script src="modules/reports.js"></script>
+<script src="modules/ui.js"></script>
+<script src="modules/app.js"></script>
+
+<!-- Utility scripts: office summary + keyboard detection -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Live update step3 office summary ──────────────────────────────────
+    App.Store.subscribe(function (state) {
+      const result = App.Calculator.calcularResultado(state);
+      if (!result) return;
+
+      const fields = {
+        'office-custo-mensal-s3': App.UI.moeda(result.custoMensalTotal),
+        'office-horas-prod-s3':   result.totalHorasProdutivas + 'h',
+        'office-rateio-s3':       App.UI.moeda(result.rateioHora),
+        'office-meta-s3':         App.UI.moeda(result.metaMensal),
+      };
+
+      Object.entries(fields).forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+      });
+
+      // Keep team count badge in sync
+      const badge = document.getElementById('team-count-badge');
+      if (badge) {
+        badge.textContent = `${state.team.length} membro${state.team.length !== 1 ? 's' : ''}`;
+      }
+    });
+
+    // ── Keyboard vs Mouse detection ────────────────────────────────────────
+    // Show kbd-bar only when the user is navigating with keyboard.
+    // This avoids visual noise for mouse-only users.
+    let kbdFadeTimer = null;
+
+    function activateKeyboardMode() {
+      document.body.classList.add('keyboard-active');
+      document.body.classList.remove('kbd-fade');
+      // Auto-fade bar after 4 seconds of no keyboard activity
+      clearTimeout(kbdFadeTimer);
+      kbdFadeTimer = setTimeout(() => {
+        document.body.classList.add('kbd-fade');
+      }, 4000);
+    }
+
+    // Show bar on Tab — the canonical "I'm using a keyboard" signal
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab') {
+        activateKeyboardMode();
+      }
+    });
+
+    // Refresh fade timer on any keydown while bar is visible
+    document.addEventListener('keydown', function () {
+      if (document.body.classList.contains('keyboard-active')) {
+        document.body.classList.remove('kbd-fade');
+        clearTimeout(kbdFadeTimer);
+        kbdFadeTimer = setTimeout(() => {
+          document.body.classList.add('kbd-fade');
+        }, 4000);
+      }
+    });
+
+    // Mouse click: hide keyboard bar and return to mouse mode
+    document.addEventListener('mousedown', function () {
+      document.body.classList.remove('keyboard-active', 'kbd-fade');
+      clearTimeout(kbdFadeTimer);
+    });
+  });
+</script>
 </body>
 </html>

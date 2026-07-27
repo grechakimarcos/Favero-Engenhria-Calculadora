@@ -1,0 +1,596 @@
+'use strict';
+window.App = window.App || {};
+
+/**
+ * @module App
+ * Main orchestrator. Wires together Store, Calculator, Charts, Reports and UI.
+ * Handles all event delegation and step navigation.
+ */
+App.Main = (function () {
+  const Store    = App.Store;
+  const Calc     = App.Calculator;
+  const Charts   = App.Charts;
+  const Reports  = App.Reports;
+  const UI       = App.UI;
+  const Config   = App.Config;
+
+  // ── Cached last result ────────────────────────────────────────────────────
+  let _lastResult = null;
+
+  // ── Guard: prevents store subscriber from re-rendering while user types ──
+  // Store.setState() calls listeners synchronously, so setting this flag
+  // immediately before setState() and clearing it right after is safe.
+  let _suppressStoreRerender = false;
+
+  // ── Calculate and Render ──────────────────────────────────────────────────
+  function recalculate() {
+    const state = Store.getState();
+    _lastResult = Calc.calcularResultado(state);
+
+    const step = state.currentStep;
+    if (step === 1) UI.renderStep2(state, _lastResult);
+    if (step === 3) {
+      UI.renderStep4(_lastResult, state);
+      // Render charts with slight delay so DOM is painted
+      requestAnimationFrame(() => {
+        Charts.renderCustoComposicao('chart-custo-composicao', _lastResult);
+        Charts.renderCandidatosPreco('chart-candidatos', _lastResult);
+      });
+    }
+    if (step === 4) UI.renderStep5(state, _lastResult);
+  }
+
+  // ── Step Navigation ────────────────────────────────────────────────────────
+  function goToStep(target) {
+    const state = Store.getState();
+    const from = state.currentStep;
+
+    // Validate before leaving step
+    if (target > from) {
+      const valid = _validateStep(from);
+      if (!valid) return;
+    }
+
+    Store.setState({ currentStep: target });
+    UI.updateStepper(target);
+    _renderCurrentStep();
+  }
+
+  function _renderCurrentStep() {
+    const state = Store.getState();
+    const step = state.currentStep;
+
+    if (step === 0) UI.renderStep1(state);
+    if (step === 1) { _lastResult = Calc.calcularResultado(state); UI.renderStep2(state, _lastResult); }
+    if (step === 2) UI.renderStep3(state);
+    if (step === 3) {
+      _lastResult = Calc.calcularResultado(state);
+      UI.renderStep4(_lastResult, state);
+      requestAnimationFrame(() => {
+        Charts.renderCustoComposicao('chart-custo-composicao', _lastResult);
+        Charts.renderCandidatosPreco('chart-candidatos', _lastResult);
+      });
+    }
+    if (step === 4) {
+      _lastResult = Calc.calcularResultado(state);
+      UI.renderStep5(state, _lastResult);
+    }
+  }
+
+  // ── Validation ─────────────────────────────────────────────────────────────
+  function _validateStep(step) {
+    const state = Store.getState();
+    if (step === 0) {
+      // Project name and client are recommended but not required
+      return true;
+    }
+    if (step === 1) {
+      const horasEquipe = state.team.reduce((s, t) => s + (Number(t.horas) || 0), 0);
+      const area = Number(state.project.area) || 0;
+      const horasManuais = Number(state.project.horasManuais) || 0;
+      if (horasEquipe === 0 && area === 0 && horasManuais === 0) {
+        UI.toast('Informe a área, horas manuais ou horas da equipe para continuar.', 'error');
+        return false;
+      }
+      return true;
+    }
+    if (step === 2) {
+      const { costs } = state;
+      const margem = Number(costs.margemLucro);
+      if (margem >= 94) {
+        UI.toast('Margem de lucro inválida. Use um valor menor que 94%.', 'error');
+        UI.showValidationError('cost-margem', 'Máximo: 93%');
+        return false;
+      }
+      return true;
+    }
+    return true;
+  }
+
+  // ── Read Step 1 Inputs ─────────────────────────────────────────────────────
+  function _readStep1Inputs() {
+    return {
+      project: {
+        nome:           document.getElementById('proj-nome')?.value || '',
+        cliente:        document.getElementById('proj-cliente')?.value || '',
+        disciplina:     document.getElementById('proj-disciplina')?.value || 'eletrico',
+        tipoEdificacao: document.getElementById('proj-edificacao')?.value || 'casa',
+        area:           Number(document.getElementById('proj-area')?.value) || 0,
+        horasManuais:   document.getElementById('proj-horas-manuais')?.value || '',
+        data:           document.getElementById('proj-data')?.value || '',
+        tipoComercial:  document.getElementById('proj-tipo-comercial')?.value || 'padrao',
+        complexidade:   Number(document.getElementById('proj-complexidade')?.value) || 1,
+        revisao:        Number(document.getElementById('proj-revisao')?.value) || 0,
+        aprovacao:      Number(document.getElementById('proj-aprovacao')?.value) || 0,
+        fatorRisco:     Number(document.getElementById('proj-risco')?.value) || 0,
+        fatorUrgencia:  Number(document.getElementById('proj-urgencia')?.value) || 0,
+      },
+    };
+  }
+
+  // ── Event Delegation — Step 1 ──────────────────────────────────────────────
+  function _bindStep1Events() {
+    const panel = document.getElementById('panel-0');
+    if (!panel) return;
+    panel.addEventListener('change', e => {
+      if (e.target.matches('select, input[type="date"]')) {
+        Store.setState(_readStep1Inputs());
+      }
+    });
+    panel.addEventListener('input', e => {
+      if (e.target.matches('input[type="text"], input[type="number"]')) {
+        Store.setState(_readStep1Inputs());
+      }
+    });
+  }
+
+  // ── Event Delegation — Step 2 (Team) ──────────────────────────────────────
+  function _bindStep2Events() {
+    const panel = document.getElementById('panel-1');
+    if (!panel) return;
+
+    panel.addEventListener('change', e => {
+      if (e.target.matches('.team-colab-select')) {
+        const idx = parseInt(e.target.dataset.idx);
+        Store.setState(s => {
+          const team = [...s.team];
+          team[idx] = { ...team[idx], colaboradorId: e.target.value };
+          return { team };
+        });
+        _renderCurrentStep();
+      }
+    });
+
+    panel.addEventListener('input', e => {
+      if (e.target.matches('.team-horas-input')) {
+        const idx   = parseInt(e.target.dataset.idx);
+        const horas = Number(e.target.value) || 0;
+
+        // Block the global subscriber from triggering UI.renderStep2()
+        // while the user is actively typing — it would destroy the focused input.
+        _suppressStoreRerender = true;
+        Store.setState(s => {
+          const team = [...s.team];
+          team[idx] = { ...team[idx], horas };
+          return { team };
+        });
+        _suppressStoreRerender = false;
+
+        // Surgical DOM update: only the readonly cost cells of this row
+        const state = Store.getState();
+        _lastResult = Calc.calcularResultado(state);
+
+        const row = document.querySelector(`.team-row[data-idx="${idx}"]`);
+        if (row) {
+          const membro = state.team[idx];
+          const colab  = membro
+            ? state.collaborators.find(c => c.id === membro.colaboradorId)
+            : null;
+          if (colab) {
+            const custoHora  = Calc.custoRealHoraPorColaborador(colab, state.indirectCosts, state.collaborators);
+            const custoTotal = horas * custoHora;
+            const [inputCustoHora, inputCustoTotal] = row.querySelectorAll('.input-readonly');
+            if (inputCustoHora)  inputCustoHora.value  = UI.moeda(custoHora);
+            if (inputCustoTotal) inputCustoTotal.value = UI.moeda(custoTotal);
+          }
+        }
+
+        // Refresh the hours-preview block without touching the team list
+        if (_lastResult) {
+          const previewEl = document.getElementById('step2-hours-preview');
+          if (previewEl) {
+            const fonteMap = {
+              equipe: '👥 Horas da Equipe', manual: '✏️ Horas Manuais',
+              area:   '📐 Cálculo por Área', nenhum: '⚠️ Não definida', erro: '❌ Erro',
+            };
+            previewEl.innerHTML = `
+              <div class="hours-preview-grid">
+                <div class="metric metric-info"><small>Fonte das Horas</small><strong>${fonteMap[_lastResult.fonteHoras] || _lastResult.fonteHoras}</strong></div>
+                <div class="metric"><small>Horas Base</small><strong>${UI.horas(_lastResult.horasBase)}</strong></div>
+                <div class="metric"><small>Fator de Esforço</small><strong>×${_lastResult.fatorEsforco.toFixed(3)}</strong></div>
+                <div class="metric metric-accent"><small>Horas Finais</small><strong>${UI.horas(_lastResult.horasFinais)}</strong></div>
+              </div>`;
+          }
+        }
+      }
+    });
+
+    panel.addEventListener('click', e => {
+      if (e.target.closest('.team-remove-btn')) {
+        const btn = e.target.closest('.team-remove-btn');
+        const idx = parseInt(btn.dataset.idx);
+        const teamLen = Store.getState().team.length;
+        Store.setState(s => ({ team: s.team.filter((_, i) => i !== idx) }));
+        _renderCurrentStep();
+        // Return focus: previous row's hours input, or Add Member button
+        requestAnimationFrame(() => {
+          const horasInputs = document.querySelectorAll('.team-horas-input');
+          if (horasInputs.length > 0) {
+            const targetIdx = Math.min(idx, horasInputs.length - 1);
+            horasInputs[targetIdx].focus();
+          } else {
+            document.getElementById('add-team-member-btn')?.focus();
+          }
+        });
+      }
+      if (e.target.matches('#add-team-member-btn') || e.target.closest('#add-team-member-btn')) {
+        const state = Store.getState();
+        const defaultColab = state.collaborators[0];
+        if (!defaultColab) return;
+        Store.setState(s => ({
+          team: [...s.team, { colaboradorId: defaultColab.id, horas: 0 }],
+        }));
+        _renderCurrentStep();
+        // Auto-focus the hours input of the newly added row
+        requestAnimationFrame(() => {
+          const horasInputs = document.querySelectorAll('.team-horas-input');
+          if (horasInputs.length) {
+            const last = horasInputs[horasInputs.length - 1];
+            last.focus();
+            last.select();
+          }
+        });
+      }
+      if (e.target.closest('.colab-edit-btn')) {
+        const id = e.target.closest('.colab-edit-btn').dataset.id;
+        const colab = Store.getState().collaborators.find(c => c.id === id);
+        UI.openCollaboratorModal(colab);
+      }
+      if (e.target.closest('.colab-delete-btn')) {
+        const id = e.target.closest('.colab-delete-btn').dataset.id;
+        if (confirm('Remover este colaborador?')) {
+          Store.setState(s => ({
+            collaborators: s.collaborators.filter(c => c.id !== id),
+            team: s.team.filter(t => t.colaboradorId !== id),
+          }));
+          _renderCurrentStep();
+          UI.toast('Colaborador removido.', 'info');
+        }
+      }
+    });
+  }
+
+  // ── Event Delegation — Step 3 (Costs) ─────────────────────────────────────
+  function _bindStep3Events() {
+    const panel = document.getElementById('panel-2');
+    if (!panel) return;
+
+    panel.addEventListener('input', e => {
+      if (e.target.matches('#cost-art, #cost-outros, #cost-margem')) {
+        Store.setState({
+          costs: {
+            ...Store.getState().costs,
+            art:        Number(document.getElementById('cost-art')?.value) || 0,
+            outros:     Number(document.getElementById('cost-outros')?.value) || 0,
+            margemLucro:Number(document.getElementById('cost-margem')?.value) || 0,
+          },
+        });
+      }
+      if (e.target.matches('.indirect-nome, .indirect-valor')) {
+        const idx = parseInt(e.target.dataset.idx);
+        Store.setState(s => {
+          const ic = [...s.indirectCosts];
+          ic[idx] = {
+            ...ic[idx],
+            nome:  panel.querySelector(`.indirect-nome[data-idx="${idx}"]`)?.value || '',
+            valor: Number(panel.querySelector(`.indirect-valor[data-idx="${idx}"]`)?.value) || 0,
+          };
+          return { indirectCosts: ic };
+        });
+        // Live update totals
+        const total = Store.getState().indirectCosts.reduce((s, c) => s + (c.valor || 0), 0);
+        const rateio = App.Calculator.rateioIndiretoHora(
+          Store.getState().indirectCosts, Store.getState().collaborators
+        );
+        const totalEl = panel.querySelector('.indirect-total-box strong');
+        const rateioEl = panel.querySelector('.indirect-total-box .muted');
+        if (totalEl) totalEl.textContent = UI.moeda(total);
+        if (rateioEl) rateioEl.textContent = `→ Rateio: ${UI.moeda(rateio)}/h`;
+      }
+    });
+
+    panel.addEventListener('click', e => {
+      if (e.target.matches('#add-indirect-btn') || e.target.closest('#add-indirect-btn')) {
+        Store.setState(s => ({
+          indirectCosts: [...s.indirectCosts, { id: `ci_${Date.now()}`, nome: '', valor: 0 }],
+        }));
+        UI.renderStep3(Store.getState());
+      }
+      if (e.target.closest('.indirect-remove-btn')) {
+        const idx = parseInt(e.target.closest('.indirect-remove-btn').dataset.idx);
+        Store.setState(s => ({ indirectCosts: s.indirectCosts.filter((_, i) => i !== idx) }));
+        UI.renderStep3(Store.getState());
+      }
+    });
+  }
+
+  // ── Collaborator Modal Events ──────────────────────────────────────────────
+  function _bindModalEvents() {
+    const modal = document.getElementById('modal-collaborator');
+    if (!modal) return;
+
+    document.getElementById('modal-colab-cancel')?.addEventListener('click', UI.closeCollaboratorModal);
+    modal.addEventListener('click', e => { if (e.target === modal) UI.closeCollaboratorModal(); });
+
+    document.getElementById('modal-colab-save')?.addEventListener('click', () => {
+      const id    = document.getElementById('modal-colab-id').value;
+      const nome  = document.getElementById('modal-colab-nome').value.trim();
+      const cargo = document.getElementById('modal-colab-cargo').value.trim();
+      const custo = Number(document.getElementById('modal-colab-custo').value);
+      const horas = Number(document.getElementById('modal-colab-horas').value);
+      const prod  = Number(document.getElementById('modal-colab-prod').value);
+
+      if (!nome) { UI.showValidationError('modal-colab-nome', 'Nome é obrigatório'); return; }
+      if (custo < 0) { UI.showValidationError('modal-colab-custo', 'Custo deve ser ≥ 0'); return; }
+      if (horas <= 0) { UI.showValidationError('modal-colab-horas', 'Horas devem ser > 0'); return; }
+      if (prod <= 0 || prod > 150) { UI.showValidationError('modal-colab-prod', '1–150%'); return; }
+
+      const updated = { id: id || `colab_${Date.now()}`, nome, cargo, custoMensal: custo, horasMensais: horas, produtividade: prod };
+      Store.setState(s => {
+        const existing = s.collaborators.findIndex(c => c.id === updated.id);
+        const collaborators = [...s.collaborators];
+        if (existing >= 0) collaborators[existing] = updated;
+        else collaborators.push(updated);
+        return { collaborators };
+      });
+
+      UI.closeCollaboratorModal();
+      _renderCurrentStep();
+      UI.toast(`Colaborador "${nome}" ${id ? 'atualizado' : 'adicionado'} com sucesso.`);
+    });
+
+    // Add new collaborator button (in step 2)
+    document.getElementById('add-collaborator-btn')?.addEventListener('click', () => {
+      UI.openCollaboratorModal(null);
+    });
+  }
+
+  // ── History Events ─────────────────────────────────────────────────────────
+  function _bindHistoryEvents() {
+    const historyPanel = document.getElementById('history-section');
+    if (!historyPanel) return;
+
+    historyPanel.addEventListener('click', e => {
+      if (e.target.closest('.history-delete-btn')) {
+        const id = e.target.closest('.history-delete-btn').dataset.id;
+        if (confirm('Excluir este projeto do histórico?')) {
+          Store.deleteHistoryEntry(id);
+          UI.renderHistory(Store.getState().history);
+          Charts.renderHistoricoValores('chart-historico', Store.getState().history);
+          Charts.renderHorasComparativo('chart-horas-comparativo', Store.getState().history);
+          UI.toast('Projeto excluído do histórico.', 'info');
+        }
+      }
+    });
+
+    historyPanel.addEventListener('change', e => {
+      if (e.target.matches('.history-realized-input')) {
+        const id  = e.target.dataset.id;
+        const val = Number(e.target.value);
+        if (val > 0) {
+          Store.updateHistoryRealized(id, val);
+          UI.renderHistory(Store.getState().history);
+          Charts.renderHorasComparativo('chart-horas-comparativo', Store.getState().history);
+          UI.toast('Horas realizadas registradas!');
+        }
+      }
+    });
+  }
+
+  // ── Export Events ──────────────────────────────────────────────────────────
+  function _bindExportEvents() {
+    document.getElementById('btn-export-pdf')?.addEventListener('click', () => {
+      if (!_lastResult) { UI.toast('Calcule o projeto primeiro.', 'error'); return; }
+      try {
+        Reports.exportarPDF(Store.getState(), _lastResult);
+        UI.toast('PDF gerado com sucesso!');
+      } catch (e) { UI.toast('Erro ao gerar PDF. Verifique o console.', 'error'); console.error(e); }
+    });
+
+    document.getElementById('btn-export-excel')?.addEventListener('click', () => {
+      if (!_lastResult) { UI.toast('Calcule o projeto primeiro.', 'error'); return; }
+      try {
+        Reports.exportarExcel(Store.getState(), _lastResult, Store.getState().history);
+        UI.toast('Excel exportado com sucesso!');
+      } catch (e) { UI.toast('Erro ao gerar Excel. Verifique o console.', 'error'); console.error(e); }
+    });
+
+    document.getElementById('btn-save-history')?.addEventListener('click', () => {
+      if (!_lastResult) { UI.toast('Calcule o projeto primeiro.', 'error'); return; }
+      const id = Store.saveToHistory(_lastResult);
+      UI.renderHistory(Store.getState().history);
+      Charts.renderHistoricoValores('chart-historico', Store.getState().history);
+      UI.toast('Projeto salvo no histórico!');
+    });
+
+    document.getElementById('btn-new-project')?.addEventListener('click', () => {
+      if (confirm('Iniciar novo projeto? Os dados atuais não salvos serão perdidos.')) {
+        Store.resetProject();
+        _renderCurrentStep();
+        goToStep(0);
+        UI.toast('Novo projeto iniciado.');
+      }
+    });
+  }
+
+  // ── Stepper Navigation Buttons ─────────────────────────────────────────────
+  function _bindStepperEvents() {
+    // Step items: click + keyboard (Enter/Space)
+    document.querySelectorAll('.step-item').forEach((el, i) => {
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('role', 'button');
+      el.addEventListener('click', () => goToStep(i));
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          goToStep(i);
+        }
+      });
+    });
+
+    // Prev/Next buttons inside panels
+    document.querySelectorAll('.btn-next-step').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const next = parseInt(btn.dataset.next);
+        goToStep(next);
+      });
+    });
+
+    document.querySelectorAll('.btn-prev-step').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const prev = parseInt(btn.dataset.prev);
+        goToStep(prev);
+      });
+    });
+  }
+
+  // ── Global Keyboard Shortcuts ──────────────────────────────────────────────
+  //   Alt + →        → Próximo passo
+  //   Alt + ←        → Passo anterior
+  //   Ctrl + Enter   → Ir para Resultado (passo 3)
+  //   Alt + A        → Adicionar colaborador à equipe
+  //   Escape         → Fechar modal aberto
+  function _bindKeyboard() {
+    const TOTAL_STEPS = 5;
+
+    document.addEventListener('keydown', e => {
+      const tag = document.activeElement?.tagName;
+      const inTextField = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag);
+      const modalOpen = document.getElementById('modal-collaborator')?.classList.contains('open');
+
+      // ── Escape → close modal ─────────────────────────────────────────────
+      if (e.key === 'Escape') {
+        if (modalOpen) {
+          UI.closeCollaboratorModal();
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // ── Modal focus trap ─────────────────────────────────────────────────
+      if (modalOpen && e.key === 'Tab') {
+        _trapFocus(document.getElementById('modal-collaborator'), e);
+        return;
+      }
+
+      // ── Alt + → / Alt + ← : navigate steps ──────────────────────────────
+      if (e.altKey && !e.ctrlKey && !e.shiftKey) {
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          const cur = Store.getState().currentStep;
+          if (cur < TOTAL_STEPS - 1) goToStep(cur + 1);
+          return;
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          const cur = Store.getState().currentStep;
+          if (cur > 0) goToStep(cur - 1);
+          return;
+        }
+        // Alt + A → Add team member (only on step 2)
+        if (e.key === 'a' || e.key === 'A') {
+          if (Store.getState().currentStep === 1) {
+            e.preventDefault();
+            const state = Store.getState();
+            const defaultColab = state.collaborators[0];
+            if (defaultColab) {
+              Store.setState(s => ({
+                team: [...s.team, { colaboradorId: defaultColab.id, horas: 0 }],
+              }));
+              _renderCurrentStep();
+              // Focus the hours input of the new row after render
+              requestAnimationFrame(() => {
+                const rows = document.querySelectorAll('.team-horas-input');
+                if (rows.length) rows[rows.length - 1].focus();
+              });
+              UI.toast('Colaborador adicionado (Alt+A)', 'info');
+            }
+          }
+          return;
+        }
+      }
+
+      // ── Ctrl + Enter → jump to results ───────────────────────────────────
+      if (e.ctrlKey && e.key === 'Enter' && !inTextField) {
+        e.preventDefault();
+        goToStep(3);
+        return;
+      }
+    });
+  }
+
+  // ── Modal Focus Trap ───────────────────────────────────────────────────────
+  function _trapFocus(modal, e) {
+    const focusable = modal.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last  = focusable[focusable.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
+    }
+  }
+
+  // ── History Charts Section ─────────────────────────────────────────────────
+  function _initHistoryCharts() {
+    const state = Store.getState();
+    Charts.renderHistoricoValores('chart-historico', state.history);
+    Charts.renderHorasComparativo('chart-horas-comparativo', state.history);
+  }
+
+  // ── Initialize ─────────────────────────────────────────────────────────────
+  function init() {
+    // Render initial step
+    _renderCurrentStep();
+    UI.updateStepper(0);
+
+    // Bind all events
+    _bindStep1Events();
+    _bindStep2Events();
+    _bindStep3Events();
+    _bindModalEvents();
+    _bindHistoryEvents();
+    _bindExportEvents();
+    _bindStepperEvents();
+    _bindKeyboard();        // ← keyboard shortcuts
+    _initHistoryCharts();
+
+    // Subscribe to store changes for live recalc.
+    // The _suppressStoreRerender flag prevents this from firing
+    // while the user is actively typing in a team hours input.
+    Store.subscribe(state => {
+      if (_suppressStoreRerender) return;
+      if (state.currentStep === 1) recalculate();
+    });
+
+    console.info('[Fávero ERP] Sistema inicializado. v3.0.0');
+  }
+
+  return { init, goToStep, recalculate };
+})();
+
+// Bootstrap when DOM is ready
+document.addEventListener('DOMContentLoaded', App.Main.init);
