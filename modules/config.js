@@ -27,8 +27,8 @@ App.Config = Object.freeze({
 
   // ── Engineering Disciplines Master Data ─────────────────────────────────────
   DISCIPLINAS: {
-    eletrico:       { nome: 'Elétrico Residencial',      areaRef: 200, horasRef: 12, valorBase: 950,  ticketMinimo: 950  },
-    hidrossanitario:{ nome: 'Hidrossanitário Residencial',areaRef: 200, horasRef: 18, valorBase: 2200, ticketMinimo: 2200 },
+    eletrico:       { nome: 'Elétrico',                  areaRef: 200, horasRef: 12, valorBase: 950,  ticketMinimo: 950  },
+    hidrossanitario:{ nome: 'Hidrossanitário',           areaRef: 200, horasRef: 18, valorBase: 2200, ticketMinimo: 2200 },
     ppci:           { nome: 'PPCI',                      areaRef: 200, horasRef: 20, valorBase: 2200, ticketMinimo: 1800 },
     spda:           { nome: 'SPDA',                      areaRef: 200, horasRef: 10, valorBase: 1200, ticketMinimo: 950  },
     telecom:        { nome: 'Telecom/Rede lógica',       areaRef: 200, horasRef:  8, valorBase: 950,  ticketMinimo: 850  },
@@ -43,7 +43,6 @@ App.Config = Object.freeze({
   COLABORADORES_DEFAULT: [
     { id: 'reinaldo', nome: 'Reinaldo', cargo: 'Engenheiro Sênior',  custoMensal: 8000, horasMensais: 180, produtividade: 100 },
     { id: 'adriel',   nome: 'Adriel',   cargo: 'Engenheiro Pleno',   custoMensal: 2080, horasMensais: 120, produtividade: 100 },
-    { id: 'vinicius', nome: 'Vinicius', cargo: 'Estagiário',         custoMensal: 2104, horasMensais: 120, produtividade: 100 },
     { id: 'lucas',    nome: 'Lucas',    cargo: 'Técnico',            custoMensal: 1400, horasMensais: 100, produtividade: 100 },
   ],
 
