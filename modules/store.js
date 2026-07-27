@@ -82,7 +82,7 @@ App.Store = (function () {
       if (!raw) return;
       const saved = JSON.parse(raw);
       // Merge persisted user data into default state
-      _state.collaborators  = saved.collaborators  || _state.collaborators;
+      _state.collaborators  = (saved.collaborators || _state.collaborators).filter(c => c.id !== 'vinicius');
       _state.indirectCosts  = saved.indirectCosts  || _state.indirectCosts;
       _state.settings       = { ..._state.settings, ...(saved.settings || {}) };
       _state.history        = saved.history         || [];
