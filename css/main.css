@@ -1,0 +1,12 @@
+/* ============================================================
+   MAIN CSS ENTRY POINT — Import Order Matters
+   ============================================================ */
+
+/* 1. Design Tokens and Globals (HSL + Typography) */
+@import url('variables.css');
+
+/* 2. Legacy design system — Dark mode theme + all base styles */
+@import url('legacy.css');
+
+/* 2. Layout shell (sidebar + main-wrapper) — overrides body/layout for SPA */
+@import url('layout.css');

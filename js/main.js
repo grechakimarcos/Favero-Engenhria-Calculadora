@@ -7,6 +7,7 @@ window.App = window.App || {};
  * Handles all event delegation and step navigation.
  */
 App.Main = (function () {
+
   const Store    = App.Store;
   const Calc     = App.Calculator;
   const Charts   = App.Charts;
@@ -37,7 +38,8 @@ App.Main = (function () {
         Charts.renderCandidatosPreco('chart-candidatos', _lastResult);
       });
     }
-    if (step === 4) UI.renderStep5(state, _lastResult);
+    if (step === 4) UI.renderStep4Comercial(state, _lastResult);
+    if (step === 5) UI.renderStep5(state, _lastResult);
   }
 
   // ── Step Navigation ────────────────────────────────────────────────────────
@@ -72,6 +74,10 @@ App.Main = (function () {
       });
     }
     if (step === 4) {
+      _lastResult = Calc.calcularResultado(state);
+      UI.renderStep4Comercial(state, _lastResult);
+    }
+    if (step === 5) {
       _lastResult = Calc.calcularResultado(state);
       UI.renderStep5(state, _lastResult);
     }
@@ -195,22 +201,11 @@ App.Main = (function () {
           }
         }
 
-        // Refresh the hours-preview block without touching the team list
+        // Refresh the hours-preview block: delegate to UI so the
+        // factors-breakdown stays in sync with the full renderStep2 output.
         if (_lastResult) {
-          const previewEl = document.getElementById('step2-hours-preview');
-          if (previewEl) {
-            const fonteMap = {
-              equipe: '👥 Horas da Equipe', manual: '✏️ Horas Manuais',
-              area:   '📐 Cálculo por Área', nenhum: '⚠️ Não definida', erro: '❌ Erro',
-            };
-            previewEl.innerHTML = `
-              <div class="hours-preview-grid">
-                <div class="metric metric-info"><small>Fonte das Horas</small><strong>${fonteMap[_lastResult.fonteHoras] || _lastResult.fonteHoras}</strong></div>
-                <div class="metric"><small>Horas Base</small><strong>${UI.horas(_lastResult.horasBase)}</strong></div>
-                <div class="metric"><small>Fator de Esforço</small><strong>×${_lastResult.fatorEsforco.toFixed(3)}</strong></div>
-                <div class="metric metric-accent"><small>Horas Finais</small><strong>${UI.horas(_lastResult.horasFinais)}</strong></div>
-              </div>`;
-          }
+          const state = Store.getState();
+          UI.renderStep2(state, _lastResult);
         }
       }
     });
@@ -365,6 +360,67 @@ App.Main = (function () {
     });
   }
 
+  // ── Event Delegation — Step 4 (Comercial) ───────────────────────────────
+  function _bindStep4ComercialEvents() {
+    const panel = document.getElementById('panel-4');
+    if (!panel) return;
+    
+    panel.addEventListener('input', e => {
+      if (e.target.matches('#comercial-desconto, #comercial-acrescimo, #comercial-fechado')) {
+        Store.setState(s => ({
+          project: {
+            ...s.project,
+            ajusteComercial: {
+              ...s.project.ajusteComercial,
+              desconto: Number(document.getElementById('comercial-desconto')?.value) || 0,
+              acrescimo: Number(document.getElementById('comercial-acrescimo')?.value) || 0,
+              valorFechado: document.getElementById('comercial-fechado')?.value 
+                ? Number(document.getElementById('comercial-fechado').value) : null
+            }
+          }
+        }));
+        _lastResult = Calc.calcularResultado(Store.getState());
+        UI.renderStep4Comercial(Store.getState(), _lastResult);
+      }
+      
+      // Real-time factor adjustments
+      if (e.target.matches('#comercial-risco, #comercial-urgencia')) {
+        Store.setState(s => ({
+          project: {
+            ...s.project,
+            fatorRisco: Number(document.getElementById('comercial-risco')?.value) || 0,
+            fatorUrgencia: Number(document.getElementById('comercial-urgencia')?.value) || 0
+          }
+        }));
+        _lastResult = Calc.calcularResultado(Store.getState());
+        UI.renderStep4Comercial(Store.getState(), _lastResult);
+      }
+    });
+
+    panel.addEventListener('click', e => {
+      if (e.target.matches('#btn-limpar-ajuste')) {
+        Store.setState(s => ({
+          project: {
+            ...s.project,
+            fatorRisco: 0,
+            fatorUrgencia: 0,
+            ajusteComercial: { desconto: 0, acrescimo: 0, valorFechado: null }
+          }
+        }));
+        
+        // Reset the input values in DOM since we are doing surgical updates
+        document.getElementById('comercial-desconto').value = '';
+        document.getElementById('comercial-acrescimo').value = '';
+        document.getElementById('comercial-fechado').value = '';
+        document.getElementById('comercial-risco').value = 0;
+        document.getElementById('comercial-urgencia').value = 0;
+
+        _lastResult = Calc.calcularResultado(Store.getState());
+        UI.renderStep4Comercial(Store.getState(), _lastResult);
+      }
+    });
+  }
+
   // ── History Events ─────────────────────────────────────────────────────────
   function _bindHistoryEvents() {
     const historyPanel = document.getElementById('history-section');
@@ -415,12 +471,29 @@ App.Main = (function () {
       } catch (e) { UI.toast('Erro ao gerar Excel. Verifique o console.', 'error'); console.error(e); }
     });
 
-    document.getElementById('btn-save-history')?.addEventListener('click', () => {
+    document.getElementById('btn-save-history')?.addEventListener('click', async () => {
       if (!_lastResult) { UI.toast('Calcule o projeto primeiro.', 'error'); return; }
+      
+      const btn = document.getElementById('btn-save-history');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = 'Salvando...';
+
+      // Salva localmente primeiro
       const id = Store.saveToHistory(_lastResult);
       UI.renderHistory(Store.getState().history);
       Charts.renderHistoricoValores('chart-historico', Store.getState().history);
-      UI.toast('Projeto salvo no histórico!');
+      
+      // Tenta enviar pra nuvem
+      const ok = await App.Supabase.saveHistory(Store.getState().history);
+      if (ok) {
+        UI.toast('Projeto salvo no histórico da nuvem com sucesso!');
+      } else {
+        UI.toast('Projeto salvo localmente. Falha ao sincronizar com nuvem.', 'warning');
+      }
+
+      btn.innerHTML = originalText;
+      btn.disabled = false;
     });
 
     document.getElementById('btn-new-project')?.addEventListener('click', () => {
@@ -471,7 +544,7 @@ App.Main = (function () {
   //   Alt + A        → Adicionar colaborador à equipe
   //   Escape         → Fechar modal aberto
   function _bindKeyboard() {
-    const TOTAL_STEPS = 5;
+    const TOTAL_STEPS = 6;
 
     document.addEventListener('keydown', e => {
       const tag = document.activeElement?.tagName;
@@ -561,6 +634,17 @@ App.Main = (function () {
     Charts.renderHorasComparativo('chart-horas-comparativo', state.history);
   }
 
+  // ── Sidebar Toggle ─────────────────────────────────────────────────────────
+  function _bindSidebarEvents() {
+    const toggleBtn = document.getElementById('btn-toggle-sidebar');
+    const sidebar = document.getElementById('app-sidebar');
+    if (toggleBtn && sidebar) {
+      toggleBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+      });
+    }
+  }
+
   // ── Initialize ─────────────────────────────────────────────────────────────
   function init() {
     // Render initial step
@@ -571,12 +655,19 @@ App.Main = (function () {
     _bindStep1Events();
     _bindStep2Events();
     _bindStep3Events();
+    _bindStep4ComercialEvents();
     _bindModalEvents();
     _bindHistoryEvents();
     _bindExportEvents();
     _bindStepperEvents();
     _bindKeyboard();        // ← keyboard shortcuts
     _initHistoryCharts();
+
+    // Initialize Settings Panel
+    App.SettingsUI.init();
+    
+    // Initialize Users UI
+    if (App.UsersUI) App.UsersUI.init();
 
     // Subscribe to store changes for live recalc.
     // The _suppressStoreRerender flag prevents this from firing
@@ -586,11 +677,23 @@ App.Main = (function () {
       if (state.currentStep === 1) recalculate();
     });
 
-    console.info('[Fávero ERP] Sistema inicializado. v3.0.0');
+    console.info('[Fávero ERP] Sistema inicializado. v3.0.0 + Supabase Auth');
   }
 
   return { init, goToStep, recalculate };
 })();
 
 // Bootstrap when DOM is ready
-document.addEventListener('DOMContentLoaded', App.Main.init);
+document.addEventListener('DOMContentLoaded', function () {
+  // Initialize auth first — gates the entire app
+  App.Auth.init(function (user) {
+    // Called on successful login or restored session
+    // App.Main.init() wires all events — safe to call multiple times
+    // (guard prevents double initialization)
+    if (!window._appInitialized) {
+      window._appInitialized = true;
+      App.Router.init();
+      App.Main.init();
+    }
+  });
+});

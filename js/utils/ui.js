@@ -165,13 +165,26 @@ App.UI = (function () {
     // Hours preview card
     const previewEl = document.getElementById('step2-hours-preview');
     if (previewEl && result) {
-      const horasEquipe = state.team.reduce((s, t) => s + (Number(t.horas) || 0), 0);
+      const f = result.fatores || {};
+      const pct = v => v === 1 ? '<span class="factor-neutral">1.00×</span>' : v > 1 ? `<span class="factor-up">+${((v-1)*100).toFixed(0)}% (${v.toFixed(2)}×)</span>` : `<span class="factor-down">${((v-1)*100).toFixed(0)}% (${v.toFixed(2)}×)</span>`;
       previewEl.innerHTML = `
         <div class="hours-preview-grid">
           ${renderMetric('Fonte das Horas', _fonteLabel(result.fonteHoras), 'metric-info')}
           ${renderMetric('Horas Base', horas(result.horasBase))}
-          ${renderMetric('Fator de Esforço', `×${result.fatorEsforco.toFixed(3)}`)}
+          ${renderMetric('Fator de Esforço Total', `×${result.fatorEsforco.toFixed(3)}`, 'metric-accent')}
           ${renderMetric('Horas Finais', horas(result.horasFinais), 'metric-accent')}
+        </div>
+        <div class="factors-breakdown">
+          <p class="factors-title">📊 Detalhamento do Fator de Esforço</p>
+          <div class="factors-grid">
+            <div class="factor-item"><span class="factor-label">🏠 Edificação</span>${pct(f.edificacao || 1)}</div>
+            <div class="factor-item"><span class="factor-label">🔄 Revisão</span>${pct(f.revisao || 1)}</div>
+            <div class="factor-item"><span class="factor-label">📋 Aprovação</span>${pct(f.aprovacao || 1)}</div>
+            <div class="factor-item"><span class="factor-label">⚙️ Complexidade</span>${pct(f.complexidade || 1)}</div>
+            <div class="factor-item"><span class="factor-label">⚠️ Risco</span>${pct(f.risco || 1)}</div>
+            <div class="factor-item"><span class="factor-label">⏱️ Urgência</span>${pct(f.urgencia || 1)}</div>
+            <div class="factor-item factor-tipo"><span class="factor-label">💼 Tipo Comercial</span>${pct(f.tipoComercial || 1)}</div>
+          </div>
         </div>`;
     }
 
@@ -292,6 +305,33 @@ App.UI = (function () {
     document.getElementById('kpi-ticket-min').textContent   = moeda(result.ticketMinimoComDespesas);
     document.getElementById('kpi-determinante').textContent = result.determinante;
 
+    // ── Factors Breakdown Panel (step 4) ──────────────────────────────────────
+    const factorsEl = document.getElementById('kpi-fatores-breakdown');
+    if (factorsEl && result.fatores) {
+      const f = result.fatores;
+      const fmtFator = (v) => {
+        if (v === 1)   return `<span class="factor-neutral">neutro (×1.00)</span>`;
+        if (v > 1)     return `<span class="factor-up">+${((v - 1) * 100).toFixed(0)}% (×${v.toFixed(2)})</span>`;
+        return             `<span class="factor-down">${((v - 1) * 100).toFixed(0)}% (×${v.toFixed(2)})</span>`;
+      };
+      factorsEl.innerHTML = `
+        <table class="factors-table">
+          <thead><tr><th>Parâmetro</th><th>Seleção</th><th>Impacto nas Horas</th></tr></thead>
+          <tbody>
+            <tr><td>🏠 Tipo de Edificação</td><td>${Config.LABELS_EDIFICACAO[state.project.tipoEdificacao] || '—'}</td><td>${fmtFator(f.edificacao)}</td></tr>
+            <tr><td>🔄 Fator de Revisão</td><td>${Config.LABELS_REVISAO[state.project.revisao] || '—'}</td><td>${fmtFator(f.revisao)}</td></tr>
+            <tr><td>📋 Fator de Aprovação</td><td>${Config.LABELS_APROVACAO[state.project.aprovacao] || '—'}</td><td>${fmtFator(f.aprovacao)}</td></tr>
+            <tr><td>⚙️ Complexidade</td><td>${Config.LABELS_COMPLEXIDADE[state.project.complexidade] || '—'}</td><td>${fmtFator(f.complexidade)}</td></tr>
+            <tr><td>⚠️ Fator de Risco</td><td>${Config.LABELS_RISCO[state.project.fatorRisco] || '—'}</td><td>${fmtFator(f.risco)}</td></tr>
+            <tr><td>⏱️ Fator de Urgência</td><td>${Config.LABELS_URGENCIA[state.project.fatorUrgencia] || '—'}</td><td>${fmtFator(f.urgencia)}</td></tr>
+            <tr class="factor-row-tipo"><td>💼 Tipo Comercial</td><td>${Config.LABELS_TIPO[state.project.tipoComercial] || '—'}</td><td><span class="factor-comercial">${fmtFator(f.tipoComercial)} no Valor Ref.</span></td></tr>
+          </tbody>
+          <tfoot>
+            <tr><td colspan="2"><strong>Fator de Esforço Total</strong></td><td><strong>×${result.fatorEsforco.toFixed(3)}</strong></td></tr>
+          </tfoot>
+        </table>`;
+    }
+
     // Color highlight based on margin
     const finalKpiEl = document.getElementById('kpi-block-final');
     if (finalKpiEl) {
@@ -374,6 +414,101 @@ App.UI = (function () {
     document.getElementById('office-meta-semanal').textContent   = moeda(result.metaSemanal);
     document.getElementById('office-meta-diaria').textContent    = moeda(result.metaDiaria);
     document.getElementById('office-custos-ind').textContent     = moeda(result.totalCustosIndiretos);
+  }
+
+  // ── Step 4.5: Fechamento Comercial (Ajuste Fino) ───────────────────────────
+  function renderStep4Comercial(state, result) {
+    const el = document.getElementById('step4-comercial-content');
+    if (!el || !result) return;
+    
+    const p = state.project;
+    const a = p.ajusteComercial || { desconto: 0, acrescimo: 0, valorFechado: null };
+
+    // Determinar classes de alerta para a margem real
+    let margemClass = 'text-success';
+    if (result.margemReal < 10) margemClass = 'text-danger';
+    else if (result.margemReal < 20) margemClass = 'text-warning';
+
+    // Se a tabela já existir no DOM, faça um update cirúrgico para não perder foco
+    if (document.getElementById('sim-custo-final')) {
+      document.getElementById('sim-custo-final').innerHTML = `<strong>${moeda(result.custoInternoTotal)}</strong>`;
+      document.getElementById('sim-preco-base').textContent = moeda(result.valorFinalBase);
+      document.getElementById('sim-preco-fechado').innerHTML = `<strong style="font-size:24px; color: var(--primary);">${moeda(result.valorFinal)}</strong>`;
+      document.getElementById('sim-lucro').innerHTML = `Lucro Líquido Projetado: <strong>${moeda(result.lucroLiquido)}</strong>`;
+      document.getElementById('sim-margem').innerHTML = `Margem Líquida Real: <strong class="${margemClass}">${pct(result.margemReal)}</strong>`;
+      
+      document.getElementById('sim-risco-pct').textContent = pct((p.fatorRisco || 0) * 100);
+      document.getElementById('sim-urgencia-pct').textContent = pct((p.fatorUrgencia || 0) * 100);
+      
+      return;
+    }
+
+    el.innerHTML = `
+      <div class="grid-2" style="margin-bottom: 24px; align-items: start;">
+        <!-- Bloco Esquerdo: Painel de Controles -->
+        <div class="card" style="margin:0;">
+          <h2>🎛️ Ajustes Manuais</h2>
+          <div class="form-group">
+            <label>Desconto Concedido (R$)</label>
+            <input type="number" id="comercial-desconto" value="${a.desconto}" min="0" step="50" placeholder="Ex: 500" />
+          </div>
+          <div class="form-group">
+            <label>Acréscimo Estratégico (R$)</label>
+            <input type="number" id="comercial-acrescimo" value="${a.acrescimo}" min="0" step="50" placeholder="Ex: 1000" />
+          </div>
+          <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+            <label style="color: var(--primary);">Forçar Fechamento (Arredondamento)</label>
+            <input type="number" id="comercial-fechado" value="${a.valorFechado || ''}" min="0" step="100" placeholder="Ex: 5000" style="border-color: var(--primary-dim);" />
+            <small class="muted" style="display:block; margin-top:4px;">Se preenchido, ignora desconto/acréscimo e crava o preço final.</small>
+          </div>
+          
+          <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+            <label>Ajuste de Risco (+%)</label>
+            <input type="range" id="comercial-risco" value="${p.fatorRisco || 0}" min="0" max="0.5" step="0.05" />
+            <div style="display:flex; justify-content:space-between; font-size:12px;"><span>0%</span><span id="sim-risco-pct">${pct((p.fatorRisco || 0) * 100)}</span></div>
+          </div>
+          <div class="form-group">
+            <label>Ajuste de Urgência (+%)</label>
+            <input type="range" id="comercial-urgencia" value="${p.fatorUrgencia || 0}" min="0" max="0.5" step="0.05" />
+            <div style="display:flex; justify-content:space-between; font-size:12px;"><span>0%</span><span id="sim-urgencia-pct">${pct((p.fatorUrgencia || 0) * 100)}</span></div>
+          </div>
+          <div style="margin-top:16px;">
+             <button id="btn-limpar-ajuste" class="btn btn-ghost btn-sm" style="width:100%; color:var(--text-muted);">Limpar Ajustes Manuais</button>
+          </div>
+        </div>
+
+        <!-- Bloco Direito: Painel de Resultados em Tempo Real -->
+        <div class="card" style="margin:0; position: sticky; top: 16px; background: var(--bg-base);">
+          <h2>📈 Simulação do Negócio</h2>
+          <table class="summary-table" style="margin-top: 16px; font-size: 15px;">
+            <tr>
+               <td>Custo Interno Final</td>
+               <td id="sim-custo-final" style="text-align:right;"><strong>${moeda(result.custoInternoTotal)}</strong></td>
+            </tr>
+            <tr>
+               <td>Preço Analítico Original</td>
+               <td id="sim-preco-base" style="text-align:right; color: var(--text-muted); text-decoration: line-through;">${moeda(result.valorFinalBase)}</td>
+            </tr>
+            <tr style="border-top: 1px solid var(--border);">
+               <td style="padding-top: 16px;"><strong style="font-size:18px;">Preço Fechado</strong></td>
+               <td id="sim-preco-fechado" style="padding-top: 16px; text-align:right;"><strong style="font-size:24px; color: var(--primary);">${moeda(result.valorFinal)}</strong></td>
+            </tr>
+            <tr>
+               <td colspan="2" id="sim-lucro" style="padding-top: 16px; font-size: 14px;">
+                 Lucro Líquido Projetado: <strong>${moeda(result.lucroLiquido)}</strong>
+               </td>
+            </tr>
+            <tr>
+               <td colspan="2" id="sim-margem" style="font-size: 14px;">
+                 Margem Líquida Real: <strong class="${margemClass}">${pct(result.margemReal)}</strong>
+               </td>
+            </tr>
+          </table>
+          <div style="margin-top: 24px; padding: 12px; background: rgba(76,139,245,0.05); border-radius: 8px; border: 1px solid rgba(76,139,245,0.2);">
+            <small style="color: var(--text-muted);">O preço fechado ajustado será levado ao relatório e histórico.</small>
+          </div>
+        </div>
+      </div>`;
   }
 
   // ── Step 5: Report ─────────────────────────────────────────────────────────
@@ -497,7 +632,7 @@ App.UI = (function () {
   return {
     moeda, pct, horas, num,
     updateStepper,
-    renderStep1, renderStep2, renderStep3, renderStep4, renderStep5,
+    renderStep1, renderStep2, renderStep3, renderStep4, renderStep4Comercial, renderStep5,
     renderColaboradoresTable,
     renderHistory,
     openCollaboratorModal, closeCollaboratorModal,

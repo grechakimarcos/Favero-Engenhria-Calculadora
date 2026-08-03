@@ -1,0 +1,329 @@
+/* Modal Centralizado Moderno (Enterprise UX) */
+.modern-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.modern-overlay.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.modern-modal {
+  background: var(--bg-card, #1e1e2d);
+  width: 90%;
+  max-width: 650px;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(20px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 90vh;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.modern-overlay.visible .modern-modal {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.modern-modal-header {
+  padding: 24px 32px 16px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border, #2d2d3f);
+}
+
+.modern-modal-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.modern-modal-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--primary, #6366f1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modern-modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.modern-modal-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #9ca3af);
+}
+
+.modern-modal-body {
+  padding: 32px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.modern-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modern-form-group label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary, #e5e7eb);
+}
+
+.modern-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.modern-input-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--text-muted, #6b7280);
+  pointer-events: none;
+}
+
+.modern-input-wrapper input,
+.modern-input-wrapper select {
+  width: 100%;
+  padding: 12px 16px 12px 42px;
+  background: var(--bg-input, #13131a);
+  border: 1px solid var(--border, #2d2d3f);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.modern-input-wrapper select {
+  appearance: none;
+  cursor: pointer;
+}
+
+.modern-input-wrapper .select-chevron {
+  position: absolute;
+  right: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.modern-input-wrapper input:focus,
+.modern-input-wrapper select:focus {
+  border-color: var(--primary, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  outline: none;
+}
+
+.pwd-generator-wrapper {
+  display: flex;
+  gap: 12px;
+}
+
+.pwd-input-group {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.pwd-input-group input {
+  padding-right: 48px; /* space for copy icon */
+}
+
+.btn-inline-icon {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-inline-icon:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-primary);
+}
+
+.btn-generate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-generate:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pwd-strength-bar {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.pwd-strength-segment {
+  height: 4px;
+  flex: 1;
+  border-radius: 2px;
+  background: var(--success, #10b981);
+}
+
+.pwd-strength-label {
+  font-size: 0.75rem;
+  color: var(--success);
+  margin-left: 8px;
+  font-weight: 500;
+}
+
+.modern-alert {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.modern-alert-icon {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.modern-alert-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.modern-modal-footer {
+  padding: 24px 32px;
+  border-top: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.modern-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.modern-actions .btn-cancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modern-actions .btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.modern-actions .btn-submit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modern-benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.benefit-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.benefit-icon {
+  color: var(--primary);
+  background: rgba(99,102,241, 0.1);
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.benefit-text h4 {
+  margin: 0 0 4px 0;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.benefit-text p {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Responsividade */
+@media (max-width: 700px) {
+  .modern-benefits-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .modern-modal-body, .modern-modal-footer, .modern-modal-header {
+    padding: 20px;
+  }
+  .pwd-generator-wrapper {
+    flex-direction: column;
+  }
+  .btn-generate {
+    padding: 12px;
+    justify-content: center;
+  }
+}

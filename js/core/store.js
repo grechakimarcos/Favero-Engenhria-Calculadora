@@ -28,6 +28,11 @@ App.Store = (function () {
         tipoComercial: 'padrao',
         fatorRisco: 0,
         fatorUrgencia: 0,
+        ajusteComercial: {
+          desconto: 0,
+          acrescimo: 0,
+          valorFechado: null
+        }
       },
 
       team: [
@@ -136,14 +141,19 @@ App.Store = (function () {
     const entry = {
       id: Date.now().toString(),
       savedAt: new Date().toISOString(),
-      project: { ...state.project },
+      project: { 
+        ...state.project, 
+        ajusteComercial: { ...(state.project.ajusteComercial || {}) } 
+      },
       team: [...state.team],
       costs: { ...state.costs },
       result: {
         valorFinal: result.valorFinal,
+        valorFinalBase: result.valorFinalBase,
         horasFinais: result.horasFinais,
         custoInternoTotal: result.custoInternoTotal,
         margemBruta: result.margemBruta,
+        margemReal: result.margemReal,
         determinante: result.determinante,
       },
       // AI-ready: store raw inputs for future ML training
