@@ -31,7 +31,7 @@ App.Reports = (function () {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const { project, team, costs, collaborators, indirectCosts } = state;
-    const disc = Config.DISCIPLINAS[project.disciplina];
+    const disc = (state.disciplinas || {})[project.disciplina];
     const pageW = doc.internal.pageSize.getWidth();
     let y = 0;
 
@@ -198,8 +198,8 @@ App.Reports = (function () {
       ['DADOS DO PROJETO'],
       ['Projeto', project.nome || '—'],
       ['Cliente', project.cliente || '—'],
-      ['Data', project.data || '—'],
-      ['Disciplina', Config.DISCIPLINAS[project.disciplina]?.nome || '—'],
+      ['Data', new Date(project.data).toLocaleDateString('pt-BR')],
+      ['Disciplina', (state.disciplinas || {})[project.disciplina]?.nome || '—'],
       ['Tipo Edificação', Config.LABELS_EDIFICACAO[project.tipoEdificacao] || '—'],
       ['Área', `${project.area || 0} m²`],
       [],
@@ -255,8 +255,8 @@ App.Reports = (function () {
       new Date(h.savedAt).toLocaleDateString('pt-BR'),
       h.project.nome || '—',
       h.project.cliente || '—',
-      Config.DISCIPLINAS[h.project.disciplina]?.nome || h.project.disciplina,
-      h.result.horasFinais?.toFixed(2) || '—',
+      (state.disciplinas || {})[h.project.disciplina]?.nome || h.project.disciplina,
+      h.result.horasFinais.toFixed(1),
       h.aiPayload?.horasRealizadas?.toFixed(2) || '—',
       h.result.custoInternoTotal?.toFixed(2) || '—',
       h.result.valorFinal?.toFixed(2) || '—',

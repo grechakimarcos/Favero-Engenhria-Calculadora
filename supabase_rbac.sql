@@ -248,3 +248,98 @@ BEGIN
 END;
 $$;
 
+
+-- =============================================
+-- 10. HISTÓRICO DE PROJETOS (NUVEM)
+-- =============================================
+CREATE TABLE IF NOT EXISTS public.projetos_historico (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  saved_at timestamptz DEFAULT now(),
+  project_data jsonb,
+  team_data jsonb,
+  costs_data jsonb,
+  settings_data jsonb,
+  result_data jsonb,
+  ai_payload jsonb,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE public.projetos_historico ENABLE ROW LEVEL SECURITY;
+
+-- Drop policies if exist to ensure idempotency
+DROP POLICY IF EXISTS "Usuários podem ler seus projetos" ON public.projetos_historico;
+DROP POLICY IF EXISTS "Admins podem ler todos os projetos" ON public.projetos_historico;
+DROP POLICY IF EXISTS "Usuários podem criar projetos" ON public.projetos_historico;
+DROP POLICY IF EXISTS "Usuários podem atualizar seus projetos" ON public.projetos_historico;
+DROP POLICY IF EXISTS "Usuários podem deletar seus projetos" ON public.projetos_historico;
+
+-- Ler: O próprio usuário, ou Administradores
+CREATE POLICY "Usuários podem ler seus projetos" ON public.projetos_historico FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Admins podem ler todos os projetos" ON public.projetos_historico FOR SELECT USING (public.is_admin());
+
+-- Escrever: Só pode criar em seu nome
+CREATE POLICY "Usuários podem criar projetos" ON public.projetos_historico FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Atualizar/Deletar: Só os próprios projetos
+CREATE POLICY "Usuários podem atualizar seus projetos" ON public.projetos_historico FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Usuários podem deletar seus projetos" ON public.projetos_historico FOR DELETE USING (auth.uid() = user_id);
+
+
+-- =============================================
+-- 11. SEED DATA — Disciplinas Padrão
+-- =============================================
+-- Execute este bloco para popular o banco com as disciplinas de engenharia padrão.
+-- Use ON CONFLICT para ser idempotente (pode rodar várias vezes sem duplicar).
+
+INSERT INTO public.config_disciplinas (key, nome, area_ref, horas_ref, valor_base, ticket_minimo)
+VALUES
+  ('eletrico',        'Elétrico',               200, 12,  950,  950),
+  ('hidrossanitario', 'Hidrossanitário',         200, 18, 2200, 2200),
+  ('ppci',            'PPCI',                    200, 20, 2200, 1800),
+  ('spda',            'SPDA',                    200, 10, 1200,  950),
+  ('telecom',         'Telecom/Rede lógica',     200,  8,  950,  850),
+  ('cftv',            'CFTV',                    200,  8,  950,  850),
+  ('climatizacao',    'Climatização',            200, 16, 1800, 1500),
+  ('exaustao',        'Exaustão/Ventilação',     200, 14, 1700, 1400),
+  ('gas',             'Gás',                     200, 12, 1500, 1200)
+ON CONFLICT (key) DO UPDATE SET
+  nome          = EXCLUDED.nome,
+  area_ref      = EXCLUDED.area_ref,
+  horas_ref     = EXCLUDED.horas_ref,
+  valor_base    = EXCLUDED.valor_base,
+  ticket_minimo = EXCLUDED.ticket_minimo;
+
+
+-- =============================================
+-- 12. LIMPEZA E RESET — Colaboradores e Custos
+-- =============================================
+-- IMPORTANTE: Execute este bloco se houver duplicatas nas tabelas.
+-- Ele apaga TUDO e reinicia com os dados corretos e únicos.
+
+-- Adiciona constraint UNIQUE em 'nome' para prevenir duplicatas futuras
+ALTER TABLE public.config_colaboradores
+  DROP CONSTRAINT IF EXISTS config_colaboradores_nome_key;
+ALTER TABLE public.config_colaboradores
+  ADD CONSTRAINT config_colaboradores_nome_key UNIQUE (nome);
+
+ALTER TABLE public.config_custos_indiretos
+  DROP CONSTRAINT IF EXISTS config_custos_indiretos_nome_key;
+ALTER TABLE public.config_custos_indiretos
+  ADD CONSTRAINT config_custos_indiretos_nome_key UNIQUE (nome);
+
+-- Limpa e repopula colaboradores (resolve duplicatas de execuções anteriores)
+DELETE FROM public.config_colaboradores;
+INSERT INTO public.config_colaboradores (nome, cargo, custo_mensal, horas_mensais, produtividade)
+VALUES
+  ('Reinaldo', 'Engenheiro Sênior', 8000, 180, 100),
+  ('Adriel',   'Engenheiro Pleno',  2080, 120, 100),
+  ('Lucas',    'Técnico',           1400, 100, 100);
+
+-- Limpa e repopula custos indiretos
+DELETE FROM public.config_custos_indiretos;
+INSERT INTO public.config_custos_indiretos (nome, valor)
+VALUES
+  ('Arieli (Administrativo)',   1499),
+  ('Estrutura (Aluguel/Infra)', 2595);
+

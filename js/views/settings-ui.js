@@ -19,24 +19,68 @@ App.SettingsUI = (function () {
     _renderIndirectCosts(state.indirectCosts);
   }
 
-  // ── Section 1: Financial Parameters ──────────────────────────────────────────
+  // ── Section 1: Financial Parameters ──────────────────────────────────────────────────
   function _renderFinancial(settings) {
     const el = document.getElementById('settings-financial-body');
     if (!el) return;
     el.innerHTML = `
-      <div class="settings-form-grid">
-        <div class="form-group">
-          <label for="cfg-meta-mensal">Meta Mensal (R$)</label>
-          <input type="number" id="cfg-meta-mensal" value="${settings.metaMensal}" min="0" step="500" />
+      <div class="stt-fields-grid">
+
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-green">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="cfg-meta-mensal">Meta Mensal</label>
+            <div class="stt-input-wrap">
+              <span class="stt-prefix">R$</span>
+              <input class="stt-input" type="number" id="cfg-meta-mensal"
+                value="${settings.metaMensal}" min="0" step="500"
+                aria-label="Meta mensal em reais" />
+            </div>
+            <p class="stt-hint">Valor da meta financeira mensal utilizada como base dos cálculos.</p>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="cfg-imposto">Imposto Simples (%)</label>
-          <input type="number" id="cfg-imposto" value="${(settings.impostoSimples * 100).toFixed(1)}" min="0" max="100" step="0.1" />
+
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-blue">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="19" y1="5" x2="5" y2="19"/>
+              <circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>
+            </svg>
+          </div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="cfg-imposto">Imposto Simples</label>
+            <div class="stt-input-wrap">
+              <input class="stt-input" type="number" id="cfg-imposto"
+                value="${(settings.impostoSimples * 100).toFixed(1)}" min="0" max="100" step="0.1"
+                aria-label="Imposto simples em percentual" />
+              <span class="stt-suffix">%</span>
+            </div>
+            <p class="stt-hint">Percentual utilizado para cálculo dos impostos sobre os serviços.</p>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="cfg-multiplicador">Multiplicador Mínimo de Custo</label>
-          <input type="number" id="cfg-multiplicador" value="${settings.multiplicadorMinimo}" min="1" max="5" step="0.05" />
+
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-orange">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="cfg-multiplicador">Multiplicador Mínimo de Custo</label>
+            <div class="stt-input-wrap">
+              <span class="stt-prefix">×</span>
+              <input class="stt-input" type="number" id="cfg-multiplicador"
+                value="${settings.multiplicadorMinimo}" min="1" max="5" step="0.05"
+                aria-label="Multiplicador mínimo de custo" />
+            </div>
+            <p class="stt-hint">Fator mínimo aplicado sobre os custos diretos para garantir margem.</p>
+          </div>
         </div>
+
       </div>`;
   }
 
@@ -44,14 +88,19 @@ App.SettingsUI = (function () {
   function _renderDisciplinas() {
     const el = document.getElementById('settings-disciplinas-body');
     if (!el) return;
-    const disciplinas = App.Config.DISCIPLINAS;
+    const disciplinas = App.Store.getState().disciplinas || {};
     const rows = Object.entries(disciplinas).map(([key, d]) => `
       <tr>
-        <td><span class="tag-disc">${d.nome}</span></td>
+        <td><input type="text" class="cfg-disc-input" data-key="${key}" data-field="nome" value="${d.nome}" style="width: 100%" /></td>
         <td><input type="number" class="cfg-disc-input" data-key="${key}" data-field="areaRef" value="${d.areaRef}" min="0" step="10" /></td>
         <td><input type="number" class="cfg-disc-input" data-key="${key}" data-field="horasRef" value="${d.horasRef}" min="0" step="1" /></td>
         <td><input type="number" class="cfg-disc-input" data-key="${key}" data-field="valorBase" value="${d.valorBase}" min="0" step="50" /></td>
         <td><input type="number" class="cfg-disc-input" data-key="${key}" data-field="ticketMinimo" value="${d.ticketMinimo}" min="0" step="50" /></td>
+        <td>
+          <button class="btn-icon-sm btn-danger-sm" data-action="remove-disc" data-key="${key}" title="Remover">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </td>
       </tr>`).join('');
 
     el.innerHTML = `
@@ -64,26 +113,55 @@ App.SettingsUI = (function () {
               <th>Horas Ref.</th>
               <th>Valor Base (R$)</th>
               <th>Ticket Mín. (R$)</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
+        <button id="btn-add-disc" class="btn btn-ghost btn-sm mt-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: text-bottom;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Adicionar Disciplina</button>
       </div>`;
 
-    // Bind live update to Config (in-memory, not persisted in Supabase — Config is frozen)
-    // We unfreeze a mutable copy for runtime edits
+    // Bind live update to Store
     el.querySelectorAll('.cfg-disc-input').forEach(input => {
       input.addEventListener('change', () => {
         const key   = input.dataset.key;
         const field = input.dataset.field;
-        const val   = parseFloat(input.value) || 0;
-        // Update runtime config (we use a mutable overlay stored in Store)
+        const val   = input.type === 'number' ? (parseFloat(input.value) || 0) : input.value;
         const state = App.Store.getState();
-        const disciplinas = state.disciplinas || {};
-        if (!disciplinas[key]) disciplinas[key] = { ...App.Config.DISCIPLINAS[key] };
+        const disciplinas = { ...state.disciplinas };
+        if (!disciplinas[key]) disciplinas[key] = { nome: key, areaRef: 0, horasRef: 0, valorBase: 0, ticketMinimo: 0 };
         disciplinas[key][field] = val;
         App.Store.setState({ disciplinas });
+        
+        // If the user modifies the name, the key remains the old internal ID, which is fine
+        // for references. We only change the visual name.
       });
+    });
+
+    el.querySelectorAll('[data-action="remove-disc"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.key;
+        const state = App.Store.getState();
+        const disciplinas = { ...state.disciplinas };
+        delete disciplinas[key];
+        App.Store.setState({ disciplinas });
+        _renderDisciplinas();
+      });
+    });
+
+    document.getElementById('btn-add-disc')?.addEventListener('click', () => {
+      const state = App.Store.getState();
+      const disciplinas = { ...state.disciplinas };
+      const newKey = 'disc_' + crypto.randomUUID().split('-')[0];
+      disciplinas[newKey] = {
+        nome: 'Nova Disciplina',
+        areaRef: 100,
+        horasRef: 10,
+        valorBase: 1000,
+        ticketMinimo: 1000
+      };
+      App.Store.setState({ disciplinas });
+      _renderDisciplinas();
     });
   }
 
@@ -224,9 +302,10 @@ App.SettingsUI = (function () {
     });
   }
 
-  // ── Save All to Cloud ─────────────────────────────────────────────────────────
+  // ── Save All to Cloud ────────────────────────────────────────────────────────────
   async function _handleSave() {
-    const btn = document.getElementById('btn-settings-save');
+    const btn    = document.getElementById('btn-settings-save');
+    const status = document.getElementById('stt-save-status');
     if (!btn) return;
 
     // Read financial inputs
@@ -242,30 +321,42 @@ App.SettingsUI = (function () {
       },
     });
 
-    // Save to Supabase
+    // Visual feedback
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Salvando…';
+    btn.classList.add('stt-saving');
+    btn.innerHTML = `<span class="stt-spin">↻</span> Salvando…`;
+    if (status) { status.textContent = ''; status.className = 'stt-footer-hint'; }
 
     const state = App.Store.getState();
     const ok    = await App.Supabase.saveAllToCloud(state);
 
     btn.disabled = false;
-    btn.innerHTML = '💾 Salvar Configurações';
+    btn.classList.remove('stt-saving');
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar Configurações`;
 
     if (ok) {
+      if (status) { status.textContent = '✔ Configurações salvas com sucesso.'; status.className = 'stt-footer-hint stt-hint-ok'; }
       App.UI.toast('✅ Configurações salvas na nuvem!', 'success');
     } else {
+      if (status) { status.textContent = '⚠️ Falha ao sincronizar com a nuvem.'; status.className = 'stt-footer-hint stt-hint-warn'; }
       App.UI.toast('⚠️ Salvo localmente. Verifique a conexão.', 'warning');
     }
+
+    setTimeout(() => { if (status) status.textContent = ''; }, 5000);
   }
 
-  // ── Tab Navigation inside Settings Panel ─────────────────────────────────────
+  // ── Tab Navigation inside Settings Panel ────────────────────────────────────────────
   function _bindTabs() {
-    document.querySelectorAll('.settings-tab').forEach(tab => {
+    // Support both old class (.settings-tab) and new class (.stt-tab)
+    document.querySelectorAll('.settings-tab, .stt-tab').forEach(tab => {
       tab.addEventListener('click', () => {
-        document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.settings-tab, .stt-tab').forEach(t => {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+        });
         document.querySelectorAll('.settings-tab-content').forEach(c => c.classList.remove('active'));
         tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
         const target = document.getElementById(tab.dataset.target);
         if (target) target.classList.add('active');
       });

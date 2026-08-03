@@ -121,8 +121,8 @@ App.Main = (function () {
         cliente:        document.getElementById('proj-cliente')?.value || '',
         disciplina:     document.getElementById('proj-disciplina')?.value || 'eletrico',
         tipoEdificacao: document.getElementById('proj-edificacao')?.value || 'casa',
-        area:           Number(document.getElementById('proj-area')?.value) || 0,
-        horasManuais:   document.getElementById('proj-horas-manuais')?.value || '',
+        area:           App.UI.unmask(document.getElementById('proj-area')?.value) || 0,
+        horasManuais:   document.getElementById('proj-horas-manuais')?.value ? App.UI.unmask(document.getElementById('proj-horas-manuais')?.value) : '',
         data:           document.getElementById('proj-data')?.value || '',
         tipoComercial:  document.getElementById('proj-tipo-comercial')?.value || 'padrao',
         complexidade:   Number(document.getElementById('proj-complexidade')?.value) || 1,
@@ -275,9 +275,9 @@ App.Main = (function () {
         Store.setState({
           costs: {
             ...Store.getState().costs,
-            art:        Number(document.getElementById('cost-art')?.value) || 0,
-            outros:     Number(document.getElementById('cost-outros')?.value) || 0,
-            margemLucro:Number(document.getElementById('cost-margem')?.value) || 0,
+            art:        App.UI.unmask(document.getElementById('cost-art')?.value),
+            outros:     App.UI.unmask(document.getElementById('cost-outros')?.value),
+            margemLucro:App.UI.unmask(document.getElementById('cost-margem')?.value),
           },
         });
       }
@@ -288,7 +288,7 @@ App.Main = (function () {
           ic[idx] = {
             ...ic[idx],
             nome:  panel.querySelector(`.indirect-nome[data-idx="${idx}"]`)?.value || '',
-            valor: Number(panel.querySelector(`.indirect-valor[data-idx="${idx}"]`)?.value) || 0,
+            valor: App.UI.unmask(panel.querySelector(`.indirect-valor[data-idx="${idx}"]`)?.value),
           };
           return { indirectCosts: ic };
         });
@@ -426,28 +426,45 @@ App.Main = (function () {
     const historyPanel = document.getElementById('history-section');
     if (!historyPanel) return;
 
-    historyPanel.addEventListener('click', e => {
+    historyPanel.addEventListener('click', async e => {
       if (e.target.closest('.history-delete-btn')) {
         const id = e.target.closest('.history-delete-btn').dataset.id;
-        if (confirm('Excluir este projeto do histórico?')) {
-          Store.deleteHistoryEntry(id);
-          UI.renderHistory(Store.getState().history);
-          Charts.renderHistoricoValores('chart-historico', Store.getState().history);
-          Charts.renderHorasComparativo('chart-horas-comparativo', Store.getState().history);
-          UI.toast('Projeto excluído do histórico.', 'info');
+        if (confirm('Excluir este projeto permanentemente da nuvem?')) {
+          e.target.closest('.history-delete-btn').disabled = true;
+          UI.toast('Excluindo...', 'info');
+          const ok = await App.Supabase.deleteProjectHistory(id);
+          if (ok) {
+            const newHistory = await App.Supabase.fetchHistory();
+            Store.setState({ history: newHistory });
+            UI.renderHistory(Store.getState().history);
+            Charts.renderHistoricoValores('chart-historico', Store.getState().history);
+            Charts.renderHorasComparativo('chart-horas-comparativo', Store.getState().history);
+            UI.toast('Projeto excluído do histórico.', 'success');
+          } else {
+            UI.toast('Erro ao excluir projeto.', 'error');
+            e.target.closest('.history-delete-btn').disabled = false;
+          }
         }
       }
     });
 
-    historyPanel.addEventListener('change', e => {
+    historyPanel.addEventListener('change', async e => {
       if (e.target.matches('.history-realized-input')) {
         const id  = e.target.dataset.id;
         const val = Number(e.target.value);
         if (val > 0) {
-          Store.updateHistoryRealized(id, val);
-          UI.renderHistory(Store.getState().history);
-          Charts.renderHorasComparativo('chart-horas-comparativo', Store.getState().history);
-          UI.toast('Horas realizadas registradas!');
+          e.target.disabled = true;
+          const ok = await App.Supabase.updateProjectRealizedHours(id, val);
+          if (ok) {
+            const newHistory = await App.Supabase.fetchHistory();
+            Store.setState({ history: newHistory });
+            UI.renderHistory(Store.getState().history);
+            Charts.renderHorasComparativo('chart-horas-comparativo', Store.getState().history);
+            UI.toast('Horas realizadas registradas na nuvem!');
+          } else {
+            UI.toast('Erro ao atualizar horas', 'error');
+            e.target.disabled = false;
+          }
         }
       }
     });
@@ -477,19 +494,47 @@ App.Main = (function () {
       const btn = document.getElementById('btn-save-history');
       const originalText = btn.innerHTML;
       btn.disabled = true;
-      btn.innerHTML = 'Salvando...';
+      btn.innerHTML = 'Salvando na nuvem...';
 
-      // Salva localmente primeiro
-      const id = Store.saveToHistory(_lastResult);
-      UI.renderHistory(Store.getState().history);
-      Charts.renderHistoricoValores('chart-historico', Store.getState().history);
+      // Cria a estrutura padrão de payload
+      const state = Store.getState();
+      const entry = {
+        id: crypto.randomUUID(),
+        savedAt: new Date().toISOString(),
+        project: { ...state.project },
+        team: [...state.team],
+        costs: { ...state.costs },
+        settings: { ...state.settings },
+        result: {
+          valorFinal: _lastResult.valorFinal,
+          valorFinalBase: _lastResult.valorFinalBase,
+          horasFinais: _lastResult.horasFinais,
+          custoInternoTotal: _lastResult.custoInternoTotal,
+          margemBruta: _lastResult.margemBruta,
+          margemReal: _lastResult.margemReal,
+          determinante: _lastResult.determinante,
+        },
+        aiPayload: {
+          disciplina: state.project.disciplina,
+          area: state.project.area,
+          complexidade: state.project.complexidade,
+          horasFinais: _lastResult.horasFinais,
+          valorFinal: _lastResult.valorFinal,
+          horasRealizadas: null,
+        },
+      };
       
-      // Tenta enviar pra nuvem
-      const ok = await App.Supabase.saveHistory(Store.getState().history);
+      // Envia pra nuvem
+      const ok = await App.Supabase.saveProjectHistory(entry);
       if (ok) {
-        UI.toast('Projeto salvo no histórico da nuvem com sucesso!');
+        // Atualiza UI lendo da nuvem de volta pra garantir espelhamento
+        const newHistory = await App.Supabase.fetchHistory();
+        Store.setState({ history: newHistory });
+        UI.renderHistory(Store.getState().history);
+        Charts.renderHistoricoValores('chart-historico', Store.getState().history);
+        UI.toast('Projeto salvo com sucesso na nuvem!');
       } else {
-        UI.toast('Projeto salvo localmente. Falha ao sincronizar com nuvem.', 'warning');
+        UI.toast('Falha ao salvar o projeto.', 'error');
       }
 
       btn.innerHTML = originalText;
@@ -509,7 +554,7 @@ App.Main = (function () {
   // ── Stepper Navigation Buttons ─────────────────────────────────────────────
   function _bindStepperEvents() {
     // Step items: click + keyboard (Enter/Space)
-    document.querySelectorAll('.step-item').forEach((el, i) => {
+    document.querySelectorAll('.step-item, .calc-step').forEach((el, i) => {
       el.setAttribute('tabindex', '0');
       el.setAttribute('role', 'button');
       el.addEventListener('click', () => goToStep(i));

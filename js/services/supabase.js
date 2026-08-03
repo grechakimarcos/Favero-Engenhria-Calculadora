@@ -174,6 +174,45 @@ App.Supabase = (function () {
     return { data, error };
   }
 
+  async function updateProfileStatus(userId, newStatus) {
+    const client = _getClient();
+    if (!client) return { error: { message: 'No client' } };
+    
+    const updates = { updated_at: new Date().toISOString() };
+    if (newStatus === 'ativo' || newStatus === 'inativo') {
+      updates.status = newStatus;
+      updates.locked_until = null;
+    } else if (newStatus === 'bloqueado') {
+      updates.status = 'ativo';
+      const future = new Date();
+      future.setFullYear(future.getFullYear() + 10);
+      updates.locked_until = future.toISOString();
+    } else if (newStatus === 'pendente') {
+      updates.status = 'ativo';
+      updates.must_change_password = true;
+    }
+
+    const { data, error } = await client
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId)
+      .select();
+      
+    return { data, error };
+  }
+
+  async function deleteProfile(userId) {
+    const client = _getClient();
+    if (!client) return { error: { message: 'No client' } };
+    
+    // Utilizamos uma função RPC (delete_user_admin) para excluir o usuário da tabela auth.users.
+    // Isso garante que o login seja revogado e o perfil seja excluído via CASCADE.
+    const { data, error } = await client.rpc('delete_user_admin', { target_user_id: userId });
+      
+    return { data, error };
+  }
+
+
   // ── Data: Settings ───────────────────────────────────────────────────────────
 
   async function loadSettings() {
@@ -215,7 +254,15 @@ App.Supabase = (function () {
     if (error) { console.warn('[Supabase] loadCollaborators error:', error.message); return null; }
     if (!data || data.length === 0) return null;
     return data.map(r => ({
-      id: r.id,
+      // Generate a stable slug-based id from the name so team references still work.
+      // e.g., "Reinaldo" → "reinaldo", "Engenheiro Pleno" → uses the DB uuid as fallback
+      id: r.nome
+        ? r.nome.toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove accents
+            .replace(/\s+/g, '_')                              // spaces → underscores
+            .replace(/[^a-z0-9_]/g, '')                       // strip special chars
+        : r.id,
+      dbId: r.id, // keep the real UUID for DB operations
       nome: r.nome,
       cargo: r.cargo,
       custoMensal: r.custo_mensal,
@@ -227,19 +274,19 @@ App.Supabase = (function () {
   async function saveCollaborators(collaborators) {
     const client = _getClient();
     if (!client || !_currentUser) return false;
-    
-    const { error: delErr } = await client.from('config_colaboradores').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    if (delErr) { console.warn('[Supabase] wipeCollaborators error:', delErr.message); return false; }
-    
+
     if (!collaborators || collaborators.length === 0) return true;
+
+    // Use upsert on the unique 'nome' column to avoid duplicates.
     const rows = collaborators.map(c => ({
+      ...(c.dbId ? { id: c.dbId } : {}), // include real UUID if we have it
       nome: c.nome,
       cargo: c.cargo,
       custo_mensal: c.custoMensal,
       horas_mensais: c.horasMensais,
       produtividade: c.produtividade,
     }));
-    const { error } = await client.from('config_colaboradores').insert(rows);
+    const { error } = await client.from('config_colaboradores').upsert(rows, { onConflict: 'nome' });
     if (error) { console.warn('[Supabase] saveCollaborators error:', error.message); return false; }
     return true;
   }
@@ -261,16 +308,15 @@ App.Supabase = (function () {
   async function saveIndirectCosts(costs) {
     const client = _getClient();
     if (!client || !_currentUser) return false;
-    
-    const { error: delErr } = await client.from('config_custos_indiretos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    if (delErr) { console.warn('[Supabase] wipeIndirectCosts error:', delErr.message); return false; }
 
     if (!costs || costs.length === 0) return true;
     const rows = costs.map(c => ({
+      ...(c.id && !c.id.startsWith('legacy') ? { id: c.id } : {}),
       nome: c.nome,
       valor: c.valor,
     }));
-    const { error } = await client.from('config_custos_indiretos').insert(rows);
+    // Upsert on unique 'nome' to prevent duplicates
+    const { error } = await client.from('config_custos_indiretos').upsert(rows, { onConflict: 'nome' });
     if (error) { console.warn('[Supabase] saveIndirectCosts error:', error.message); return false; }
     return true;
   }
@@ -317,33 +363,72 @@ App.Supabase = (function () {
     return true;
   }
 
-  // ── Data: History ────────────────────────────────────────────────────────────
+  // ── Data: History (Cloud First) ──────────────────────────────────────────────
 
-  async function loadHistory() {
+  async function fetchHistory() {
     const client = _getClient();
     if (!client || !_currentUser) return null;
     const { data, error } = await client
-      .from('project_history')
+      .from('projetos_historico')
       .select('*')
-      .eq('user_id', _currentUser.id)
       .order('saved_at', { ascending: false });
-    if (error) { console.warn('[Supabase] loadHistory error:', error.message); return null; }
-    return (data || []).map(r => r.data);
+    if (error) { console.warn('[Supabase] fetchHistory error:', error.message); return null; }
+    
+    // Map cloud schema back to JS app schema
+    return (data || []).map(r => ({
+      id: r.id,
+      savedAt: r.saved_at,
+      project: r.project_data,
+      team: r.team_data,
+      costs: r.costs_data,
+      settings: r.settings_data,
+      result: r.result_data,
+      aiPayload: r.ai_payload
+    }));
   }
 
-  async function saveHistory(history) {
+  async function saveProjectHistory(entry) {
     const client = _getClient();
     if (!client || !_currentUser) return false;
-    await client.from('project_history').delete().eq('user_id', _currentUser.id);
-    if (!history || history.length === 0) return true;
-    const rows = history.map(h => ({
-      id: h.id,
+    
+    const row = {
+      id: entry.id,
       user_id: _currentUser.id,
-      saved_at: h.savedAt,
-      data: h,
-    }));
-    const { error } = await client.from('project_history').insert(rows);
-    if (error) { console.warn('[Supabase] saveHistory error:', error.message); return false; }
+      saved_at: entry.savedAt,
+      project_data: entry.project,
+      team_data: entry.team,
+      costs_data: entry.costs,
+      settings_data: entry.settings,
+      result_data: entry.result,
+      ai_payload: entry.aiPayload
+    };
+    
+    const { error } = await client.from('projetos_historico').insert(row);
+    if (error) { console.warn('[Supabase] saveProjectHistory error:', error.message); return false; }
+    return true;
+  }
+
+  async function deleteProjectHistory(id) {
+    const client = _getClient();
+    if (!client || !_currentUser) return false;
+    
+    const { error } = await client.from('projetos_historico').delete().eq('id', id);
+    if (error) { console.warn('[Supabase] deleteProjectHistory error:', error.message); return false; }
+    return true;
+  }
+
+  async function updateProjectRealizedHours(id, horas) {
+    const client = _getClient();
+    if (!client || !_currentUser) return false;
+    
+    // As jsonb updates require reading first or complex sql, we can use an RPC or just update the whole ai_payload.
+    // For simplicity, we fetch the row first, then update it.
+    const { data } = await client.from('projetos_historico').select('ai_payload').eq('id', id).single();
+    if (!data) return false;
+    
+    const newPayload = { ...data.ai_payload, horasRealizadas: horas };
+    const { error } = await client.from('projetos_historico').update({ ai_payload: newPayload }).eq('id', id);
+    if (error) { console.warn('[Supabase] updateRealizedHours error:', error.message); return false; }
     return true;
   }
 
@@ -359,7 +444,7 @@ App.Supabase = (function () {
       loadSettings(),
       loadCollaborators(),
       loadIndirectCosts(),
-      loadHistory(),
+      fetchHistory(),
       loadDisciplinas(),
     ]);
     return { profile, settings, collaborators, indirectCosts, history, disciplinas };
@@ -367,6 +452,7 @@ App.Supabase = (function () {
 
   /**
    * Saves current Store data to Supabase.
+   * History is not saved in bulk anymore.
    * @param {object} state - App.Store.getState()
    */
   async function saveAllToCloud(state) {
@@ -374,7 +460,6 @@ App.Supabase = (function () {
       saveSettings(state.settings),
       saveCollaborators(state.collaborators),
       saveIndirectCosts(state.indirectCosts),
-      saveHistory(state.history),
       saveDisciplinas(state.disciplinas),
     ]);
     return results.every(Boolean);
@@ -425,12 +510,17 @@ App.Supabase = (function () {
     getProfile,
     getAllProfiles,
     updateProfileRole,
+    updateProfileStatus,
+    deleteProfile,
     loadAllFromCloud,
     saveAllToCloud,
     saveSettings,
     saveCollaborators,
     saveIndirectCosts,
-    saveHistory,
+    fetchHistory,
+    saveProjectHistory,
+    deleteProjectHistory,
+    updateProjectRealizedHours,
     auditLog,
     sendPasswordResetEmail,
     updatePassword,

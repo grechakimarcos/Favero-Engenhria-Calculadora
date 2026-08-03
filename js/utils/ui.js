@@ -17,12 +17,69 @@ App.UI = (function () {
   function horas(v) { return `${(v || 0).toFixed(2)}h`; }
   function num(v, d = 3) { return (v || 0).toFixed(d); }
 
+  function unmask(v) {
+    if (typeof v === 'number') return v;
+    if (!v) return 0;
+    return Number(String(v).replace(/\./g, '').replace(',', '.')) || 0;
+  }
+
+  function initMasks(container = document) {
+    container.querySelectorAll('.mask-money').forEach(input => {
+      if (input.dataset.masked) return;
+      input.dataset.masked = 'true';
+      
+      // Format initial value if present
+      if (input.value && !input.value.includes(',')) {
+        input.value = (Number(input.value)).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      }
+
+      input.addEventListener('input', e => {
+        let val = e.target.value.replace(/\D/g, '');
+        if (!val) {
+          e.target.value = '';
+          return;
+        }
+        e.target.value = (parseInt(val, 10) / 100).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        // Dispatch synthetic change to trigger state updates in main.js if needed
+        e.target.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    });
+
+    container.querySelectorAll('.mask-number').forEach(input => {
+      if (input.dataset.masked) return;
+      input.dataset.masked = 'true';
+      
+      // Format initial value if present
+      if (input.value && input.value.includes('.')) {
+        input.value = input.value.replace('.', ',');
+      }
+
+      input.addEventListener('input', e => {
+        let val = e.target.value.replace(/[^0-9,]/g, '');
+        const parts = val.split(',');
+        if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
+        e.target.value = val;
+      });
+    });
+  }
+
   // ── Stepper ────────────────────────────────────────────────────────────────
   function updateStepper(currentStep) {
-    document.querySelectorAll('.step-item').forEach((el, i) => {
+    document.querySelectorAll('.step-item, .calc-step').forEach((el, i) => {
       el.classList.toggle('active', i === currentStep);
       el.classList.toggle('completed', i < currentStep);
     });
+    
+    // Update progress bar & counters
+    const progress = Math.round((currentStep / 5) * 100);
+    const bar = document.getElementById('wizard-progress-bar');
+    if (bar) bar.style.width = progress + '%';
+    
+    const lblCurrent = document.getElementById('wizard-step-current');
+    const lblPct = document.getElementById('wizard-pct');
+    if (lblCurrent) lblCurrent.textContent = currentStep + 1;
+    if (lblPct) lblPct.textContent = progress + '% concluído';
+
     document.querySelectorAll('.step-panel').forEach((el, i) => {
       el.classList.toggle('active', i === currentStep);
     });
@@ -58,63 +115,145 @@ App.UI = (function () {
     const el = document.getElementById('step1-content');
     if (!el) return;
     el.innerHTML = `
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label for="proj-nome">Nome do Projeto</label>
-          <input type="text" id="proj-nome" value="${p.nome || ''}" placeholder="Ex: Residência Silva - Elétrico" maxlength="80" />
+      <style>
+        .calc-category { margin-top: 1.5rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+        .calc-category h3 { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin: 0; }
+        .calc-category svg { color: var(--primary); opacity: 0.8; }
+      </style>
+
+      <div class="calc-category" style="margin-top:0;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <h3>Dados do Projeto</h3>
+      </div>
+      <div class="grid-2">
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-nome">Nome do Projeto</label>
+            <div class="stt-input-wrap"><input type="text" id="proj-nome" class="stt-input" value="${p.nome || ''}" placeholder="Ex: Residência Silva - Elétrico" maxlength="80" /></div>
+            <div class="stt-hint">Identificação principal do orçamento</div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="proj-cliente">Cliente</label>
-          <input type="text" id="proj-cliente" value="${p.cliente || ''}" placeholder="Nome do cliente" maxlength="80" />
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-cliente">Cliente</label>
+            <div class="stt-input-wrap"><input type="text" id="proj-cliente" class="stt-input" value="${p.cliente || ''}" placeholder="Nome do cliente" maxlength="80" /></div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="proj-disciplina">Disciplina</label>
-          <select id="proj-disciplina">${buildOptions(
-            Object.fromEntries(Object.entries(Config.DISCIPLINAS).map(([k, v]) => [k, v.nome])),
-            p.disciplina
-          )}</select>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-data">Data do Projeto</label>
+            <div class="stt-input-wrap"><input type="date" id="proj-data" class="stt-input" value="${p.data || ''}" /></div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="proj-edificacao">Tipo de Edificação</label>
-          <select id="proj-edificacao">${buildOptions(Config.LABELS_EDIFICACAO, p.tipoEdificacao)}</select>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-area">Área do Projeto</label>
+            <div class="stt-input-wrap"><input type="text" id="proj-area" class="stt-input mask-number" value="${p.area || ''}" placeholder="0" /><div class="stt-suffix">m²</div></div>
+            <div class="stt-hint">Referência principal para estimativa (opcional)</div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="proj-area">Área do Projeto (m²) <span class="label-hint">— Referência para estimativa</span></label>
-          <input type="number" id="proj-area" value="${p.area || ''}" min="0" placeholder="0" />
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-horas-manuais">Horas Manuais</label>
+            <div class="stt-input-wrap"><input type="text" id="proj-horas-manuais" class="stt-input mask-number" value="${p.horasManuais || ''}" placeholder="Deixe em branco" /><div class="stt-suffix">h</div></div>
+            <div class="stt-hint">Caso informado, substitui o cálculo por m²</div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="proj-horas-manuais">Horas Manuais <span class="label-hint">— Sobrescreve a área</span></label>
-          <input type="number" id="proj-horas-manuais" value="${p.horasManuais || ''}" min="0" step="0.5" placeholder="Deixe em branco para usar m²" />
+      </div>
+
+      <div class="calc-category">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        <h3>Características</h3>
+      </div>
+      <div class="grid-2">
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-disciplina">Disciplina</label>
+            <div class="stt-input-wrap">
+              <select id="proj-disciplina" class="stt-input">${buildOptions(Object.fromEntries(Object.entries(state.disciplinas || {}).map(([k, v]) => [k, v.nome])), p.disciplina)}</select>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="proj-data">Data do Projeto</label>
-          <input type="date" id="proj-data" value="${p.data || ''}" />
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4M9 7h6M9 11h6M9 15h6"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-edificacao">Tipo de Edificação</label>
+            <div class="stt-input-wrap">
+              <select id="proj-edificacao" class="stt-input">${buildOptions(Config.LABELS_EDIFICACAO, p.tipoEdificacao)}</select>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="proj-tipo-comercial">Tipo Comercial</label>
-          <select id="proj-tipo-comercial">${buildOptions(Config.LABELS_TIPO, p.tipoComercial)}</select>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-complexidade">Complexidade (CMP)</label>
+            <div class="stt-input-wrap">
+              <select id="proj-complexidade" class="stt-input">${buildOptions(Config.LABELS_COMPLEXIDADE, p.complexidade)}</select>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="proj-complexidade">Complexidade (CMP)</label>
-          <select id="proj-complexidade">${buildOptions(Config.LABELS_COMPLEXIDADE, p.complexidade)}</select>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-tipo-comercial">Tipo Comercial</label>
+            <div class="stt-input-wrap">
+              <select id="proj-tipo-comercial" class="stt-input">${buildOptions(Config.LABELS_TIPO, p.tipoComercial)}</select>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="proj-revisao">Fator de Revisão</label>
-          <select id="proj-revisao">${buildOptions(Config.LABELS_REVISAO, p.revisao)}</select>
+      </div>
+
+      <div class="calc-category">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <h3>Fatores e Multiplicadores</h3>
+      </div>
+      <div class="grid-2">
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-yellow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-urgencia">Fator de Urgência</label>
+            <div class="stt-input-wrap">
+              <select id="proj-urgencia" class="stt-input">${buildOptions(Config.LABELS_URGENCIA, p.fatorUrgencia)}</select>
+            </div>
+            <div class="stt-hint">Acresce valor para entregas rápidas</div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="proj-aprovacao">Fator de Aprovação</label>
-          <select id="proj-aprovacao">${buildOptions(Config.LABELS_APROVACAO, p.aprovacao)}</select>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-yellow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-risco">Fator de Risco</label>
+            <div class="stt-input-wrap">
+              <select id="proj-risco" class="stt-input">${buildOptions(Config.LABELS_RISCO, p.fatorRisco)}</select>
+            </div>
+            <div class="stt-hint">Gordura para incertezas do projeto</div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="proj-risco">Fator de Risco</label>
-          <select id="proj-risco">${buildOptions(Config.LABELS_RISCO, p.fatorRisco)}</select>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-yellow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-revisao">Fator de Revisão</label>
+            <div class="stt-input-wrap">
+              <select id="proj-revisao" class="stt-input">${buildOptions(Config.LABELS_REVISAO, p.revisao)}</select>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="proj-urgencia">Fator de Urgência</label>
-          <select id="proj-urgencia">${buildOptions(Config.LABELS_URGENCIA, p.fatorUrgencia)}</select>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-yellow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-aprovacao">Fator de Aprovação</label>
+            <div class="stt-input-wrap">
+              <select id="proj-aprovacao" class="stt-input">${buildOptions(Config.LABELS_APROVACAO, p.aprovacao)}</select>
+            </div>
+          </div>
         </div>
       </div>`;
+    initMasks(el);
   }
 
   // ── Step 2: Team ───────────────────────────────────────────────────────────
@@ -127,7 +266,7 @@ App.UI = (function () {
       .join('');
 
     container.innerHTML = state.team.length === 0
-      ? `<div class="empty-state"><p>Nenhum colaborador adicionado. Clique em "+ Adicionar" para começar.</p></div>`
+      ? `<div class="stt-empty-state"><svg class="stt-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><h4 class="stt-empty-title">Nenhum Colaborador</h4><p class="stt-empty-desc">Adicione membros da equipe para distribuir as horas e calcular os custos.</p></div>`
       : state.team.map((membro, idx) => {
           const colab = state.collaborators.find(c => c.id === membro.colaboradorId);
           const custoHora = colab
@@ -207,6 +346,10 @@ App.UI = (function () {
     const tbody = document.getElementById('colabs-table-body');
     if (!tbody) return;
     const rateio = App.Calculator.rateioIndiretoHora(state.indirectCosts, state.collaborators);
+    if (state.collaborators.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="table-empty"><div class="stt-empty-state" style="border:none;background:transparent;padding:2rem;"><svg class="stt-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><h4 class="stt-empty-title">Nenhum Colaborador</h4><p class="stt-empty-desc">Cadastre sua equipe para calcular custos e precificar projetos.</p></div></td></tr>`;
+      return;
+    }
     tbody.innerHTML = state.collaborators.map(c => {
       const direto = c.horasMensais > 0 ? c.custoMensal / c.horasMensais : 0;
       const real = App.Calculator.custoRealHoraPorColaborador(c, state.indirectCosts, state.collaborators);
@@ -237,24 +380,36 @@ App.UI = (function () {
 
     const { costs, indirectCosts } = state;
     costsEl.innerHTML = `
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label for="cost-art">Taxa ART/RRT (R$)</label>
-          <input type="number" id="cost-art" value="${costs.art || 0}" min="0" step="10" />
+      <div class="grid-2">
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="cost-art">Taxa ART/RRT</label>
+            <div class="stt-input-wrap"><div class="stt-prefix">R$</div><input type="text" id="cost-art" class="stt-input mask-money" value="${costs.art || 0}" /></div>
+            <div class="stt-hint">Taxa de responsabilidade técnica</div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="cost-outros">Outros (Plotagem/Visitas) (R$)</label>
-          <input type="number" id="cost-outros" value="${costs.outros || 0}" min="0" step="10" />
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="cost-outros">Outros (Plotagem/Visitas)</label>
+            <div class="stt-input-wrap"><div class="stt-prefix">R$</div><input type="text" id="cost-outros" class="stt-input mask-money" value="${costs.outros || 0}" /></div>
+            <div class="stt-hint">Despesas diretas variáveis</div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="cost-margem">Margem de Lucro Desejada (%)</label>
-          <input type="number" id="cost-margem" value="${costs.margemLucro || 20}" min="0" max="90" step="1" />
-          <span class="field-hint">Usada na precificação individual por colaborador</span>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="cost-margem">Margem de Lucro Desejada</label>
+            <div class="stt-input-wrap"><input type="text" id="cost-margem" class="stt-input mask-number" value="${costs.margemLucro || 20}" /><div class="stt-suffix">%</div></div>
+            <div class="stt-hint">Usada na precificação individual por colaborador</div>
+          </div>
         </div>
       </div>
-      <div class="section-divider">
-        <h3 class="section-subtitle">Custos Indiretos do Escritório</h3>
-        <button class="btn-secondary btn-sm" id="add-indirect-btn">+ Adicionar Item</button>
+      <div class="calc-category">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <h3>Custos Indiretos do Escritório</h3>
+        <button class="btn btn-secondary btn-sm" id="add-indirect-btn" style="margin-left:auto;">+ Adicionar Item</button>
       </div>
       <div id="indirect-costs-list">
         ${indirectCosts.map((c, i) => `
@@ -265,7 +420,7 @@ App.UI = (function () {
             </div>
             <div class="form-group">
               <label>Valor Mensal (R$)</label>
-              <input type="number" class="indirect-valor" data-idx="${i}" value="${c.valor}" min="0" step="50" />
+              <input type="text" class="indirect-valor mask-money" data-idx="${i}" value="${c.valor}" />
             </div>
             <button class="btn-icon btn-danger indirect-remove-btn" data-idx="${i}" title="Remover">🗑️</button>
           </div>`).join('')}
@@ -275,13 +430,14 @@ App.UI = (function () {
         <strong>${moeda(indirectCosts.reduce((s, c) => s + (c.valor || 0), 0))}</strong>
         <span class="muted">→ Rateio: ${moeda(App.Calculator.rateioIndiretoHora(indirectCosts, state.collaborators))}/h</span>
       </div>`;
+    initMasks(costsEl);
   }
 
   // ── Step 4: Result Dashboard ───────────────────────────────────────────────
   function renderStep4(result, state) {
     if (!result) {
       document.getElementById('step4-content').innerHTML =
-        '<div class="empty-state"><p>⚠️ Preencha os dados do projeto para ver os resultados.</p></div>';
+        `<div class="stt-empty-state"><svg class="stt-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><h4 class="stt-empty-title">Faltam Informações</h4><p class="stt-empty-desc">Preencha os dados básicos do projeto para visualizar os resultados do orçamento.</p></div>`;
       return;
     }
 
@@ -392,7 +548,7 @@ App.UI = (function () {
     // Disciplines table (office baseline)
     const discBody = document.getElementById('disciplines-table-body');
     if (discBody) {
-      discBody.innerHTML = Object.entries(Config.DISCIPLINAS).map(([key, d]) => {
+      discBody.innerHTML = Object.entries(state.disciplinas || {}).map(([key, d]) => {
         const hM2 = d.horasRef / d.areaRef;
         return `
           <tr class="${key === state.project.disciplina ? 'row-highlighted' : ''}">
@@ -523,7 +679,7 @@ App.UI = (function () {
           <table class="summary-table">
             <tr><td>Projeto</td><td><strong>${state.project.nome || '—'}</strong></td></tr>
             <tr><td>Cliente</td><td>${state.project.cliente || '—'}</td></tr>
-            <tr><td>Disciplina</td><td>${Config.DISCIPLINAS[state.project.disciplina]?.nome || '—'}</td></tr>
+            <tr><td>Disciplina</td><td>${(state.disciplinas || {})[state.project.disciplina]?.nome || '—'}</td></tr>
             <tr><td>Horas Finais</td><td>${horas(result.horasFinais)}</td></tr>
             <tr><td>Custo Interno</td><td>${moeda(result.custoInternoTotal)}</td></tr>
             <tr><td>Mark-up</td><td>${result.markup.toFixed(2)}×</td></tr>
@@ -546,7 +702,7 @@ App.UI = (function () {
     if (!tbody) return;
 
     if (!history || history.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="table-empty">Nenhum projeto salvo ainda. Clique em "Salvar no Histórico" após calcular.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="table-empty"><div class="stt-empty-state" style="border:none;background:transparent;padding:2rem;"><svg class="stt-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><h4 class="stt-empty-title">Nenhum projeto salvo</h4><p class="stt-empty-desc">Após calcular, clique em "Salvar no Histórico".</p></div></td></tr>`;
       return;
     }
 
@@ -560,7 +716,7 @@ App.UI = (function () {
           <td>${new Date(h.savedAt).toLocaleDateString('pt-BR')}</td>
           <td><strong>${h.project.nome || '—'}</strong></td>
           <td>${h.project.cliente || '—'}</td>
-          <td>${Config.DISCIPLINAS[h.project.disciplina]?.nome || h.project.disciplina}</td>
+          <td>${(state.disciplinas || {})[h.project.disciplina]?.nome || h.project.disciplina}</td>
           <td>${horas(h.result.horasFinais)}</td>
           <td>${hasRealized ? horas(h.aiPayload.horasRealizadas) : `<input type="number" class="history-realized-input input-inline" data-id="${h.id}" placeholder="Informar" min="0" step="0.5" />`}</td>
           <td>${diff !== null ? `<span class="diff-badge ${diff > 0 ? 'diff-over' : 'diff-under'}">${diff > 0 ? '+' : ''}${diff.toFixed(1)}%</span>` : '—'}</td>
@@ -630,7 +786,7 @@ App.UI = (function () {
   }
 
   return {
-    moeda, pct, horas, num,
+    moeda, pct, horas, num, unmask, initMasks,
     updateStepper,
     renderStep1, renderStep2, renderStep3, renderStep4, renderStep4Comercial, renderStep5,
     renderColaboradoresTable,

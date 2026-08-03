@@ -25,32 +25,10 @@ App.Config = Object.freeze({
   FATORES_RISCO: { 0: 0.00, 1: 0.10, 2: 0.20, 3: 0.35, 4: 0.50 },
   FATORES_URGENCIA: { 0: 0.00, 1: 0.10, 2: 0.25, 3: 0.50 },
 
-  // ── Engineering Disciplines Master Data ─────────────────────────────────────
-  DISCIPLINAS: {
-    eletrico:       { nome: 'Elétrico',                  areaRef: 200, horasRef: 12, valorBase: 950,  ticketMinimo: 950  },
-    hidrossanitario:{ nome: 'Hidrossanitário',           areaRef: 200, horasRef: 18, valorBase: 2200, ticketMinimo: 2200 },
-    ppci:           { nome: 'PPCI',                      areaRef: 200, horasRef: 20, valorBase: 2200, ticketMinimo: 1800 },
-    spda:           { nome: 'SPDA',                      areaRef: 200, horasRef: 10, valorBase: 1200, ticketMinimo: 950  },
-    telecom:        { nome: 'Telecom/Rede lógica',       areaRef: 200, horasRef:  8, valorBase: 950,  ticketMinimo: 850  },
-    cftv:           { nome: 'CFTV',                      areaRef: 200, horasRef:  8, valorBase: 950,  ticketMinimo: 850  },
-    climatizacao:   { nome: 'Climatização',              areaRef: 200, horasRef: 16, valorBase: 1800, ticketMinimo: 1500 },
-    exaustao:       { nome: 'Exaustão/Ventilação',       areaRef: 200, horasRef: 14, valorBase: 1700, ticketMinimo: 1400 },
-    gas:            { nome: 'Gás',                       areaRef: 200, horasRef: 12, valorBase: 1500, ticketMinimo: 1200 },
-  },
+  // ── Master Data (Migrated to Cloud) ─────────────────────────────────────────
+  // Disciplinas, Colaboradores and Custos Indiretos are now exclusively managed 
+  // via Supabase DB to prevent duplication and ensure real-time consistency.
 
-  // ── Default Collaborators (unified from both legacy data sources) ────────────
-  // NOTE: Vinicius cost unified to R$2.104 from the collaboradores object (correct source).
-  COLABORADORES_DEFAULT: [
-    { id: 'reinaldo', nome: 'Reinaldo', cargo: 'Engenheiro Sênior',  custoMensal: 8000, horasMensais: 180, produtividade: 100 },
-    { id: 'adriel',   nome: 'Adriel',   cargo: 'Engenheiro Pleno',   custoMensal: 2080, horasMensais: 120, produtividade: 100 },
-    { id: 'lucas',    nome: 'Lucas',    cargo: 'Técnico',            custoMensal: 1400, horasMensais: 100, produtividade: 100 },
-  ],
-
-  // ── Default Indirect Costs ───────────────────────────────────────────────────
-  CUSTOS_INDIRETOS_DEFAULT: [
-    { id: 'arieli',    nome: 'Arieli (Administrativo)',  valor: 1499 },
-    { id: 'estrutura', nome: 'Estrutura (Aluguel/Infra)', valor: 2595 },
-  ],
 
   // ── Label Maps for Select Options ───────────────────────────────────────────
   LABELS_REVISAO: {

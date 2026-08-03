@@ -49,8 +49,8 @@ App.Calculator = (function () {
   // ── Hours Base Calculation (Hierarchy) ────────────────────────────────────
   // Priority: 1) Team hours  2) Manual override  3) Area-based estimate
 
-  function calcularHorasBase(project, team) {
-    const d = Config.DISCIPLINAS[project.disciplina];
+  function calcularHorasBase(project, team, state) {
+    const d = (state.disciplinas || {})[project.disciplina];
     if (!d) return { horasBase: 0, fonte: 'erro', horasPorM2: 0 };
 
     const horasPorM2 = d.horasRef / d.areaRef;
@@ -114,13 +114,13 @@ App.Calculator = (function () {
    * @returns {object} result - Complete calculation result
    */
   function calcularResultado(state) {
-    const { project, team, costs, collaborators, indirectCosts, settings } = state;
-    const d = Config.DISCIPLINAS[project.disciplina];
+    const { project, team, costs, collaborators, indirectCosts, settings, disciplinas } = state;
+    const d = (disciplinas || {})[project.disciplina];
 
     if (!d) return null;
 
     // 1. Hours
-    const { horasBase, fonte, horasPorM2 } = calcularHorasBase(project, team);
+    const { horasBase, fonte, horasPorM2 } = calcularHorasBase(project, team, state);
     const esforco = calcularFatorEsforco(project);
     const fatorEsforco = esforco.total;
     const horasFinais = horasBase * fatorEsforco;

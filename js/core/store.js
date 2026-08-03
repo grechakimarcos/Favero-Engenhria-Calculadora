@@ -47,9 +47,10 @@ App.Store = (function () {
         margemLucro: 20,
       },
 
-      // Master data — editable by user
-      collaborators: Config.COLABORADORES_DEFAULT.map(c => ({ ...c })),
-      indirectCosts: Config.CUSTOS_INDIRETOS_DEFAULT.map(c => ({ ...c })),
+      // Master data — loaded from Supabase exclusively
+      collaborators: [],
+      indirectCosts: [],
+      disciplinas: {},
 
       settings: {
         metaMensal: Config.META_MENSAL,
@@ -70,10 +71,8 @@ App.Store = (function () {
   function _persist() {
     try {
       const snapshot = {
-        collaborators: _state.collaborators,
-        indirectCosts: _state.indirectCosts,
+        // Master data (collaborators, indirectCosts, disciplinas) is managed by Supabase only
         settings: _state.settings,
-        history: _state.history,
       };
       localStorage.setItem(Config.STORAGE_KEY, JSON.stringify(snapshot));
     } catch (e) {
@@ -86,11 +85,22 @@ App.Store = (function () {
       const raw = localStorage.getItem(Config.STORAGE_KEY);
       if (!raw) return;
       const saved = JSON.parse(raw);
-      // Merge persisted user data into default state
-      _state.collaborators  = (saved.collaborators || _state.collaborators).filter(c => c.id !== 'vinicius');
-      _state.indirectCosts  = saved.indirectCosts  || _state.indirectCosts;
-      _state.settings       = { ..._state.settings, ...(saved.settings || {}) };
-      _state.history        = saved.history         || [];
+      
+      // Settings only — master data (collaborators, indirectCosts, disciplinas)
+      // are now loaded exclusively from Supabase after login.
+      _state.settings = { ..._state.settings, ...(saved.settings || {}) };
+      
+      // History is loaded exclusively from the cloud
+      _state.history = [];
+
+      // ── Migration: remove legacy master data keys from localStorage ──────────
+      // Old versions saved collaborators/indirectCosts in localStorage, which caused
+      // duplication when the same data came from Supabase. Detect and wipe them.
+      if (saved.collaborators || saved.indirectCosts) {
+        const clean = { settings: _state.settings };
+        localStorage.setItem(Config.STORAGE_KEY, JSON.stringify(clean));
+        console.info('[Store] Migrated: removed legacy master data from localStorage.');
+      }
     } catch (e) {
       console.warn('[Store] Load failed:', e);
     }
@@ -132,70 +142,9 @@ App.Store = (function () {
     };
   }
 
-  /**
-   * Saves current project calculation to history.
-   * @param {object} result - The calculated result object
-   */
-  function saveToHistory(result) {
-    const state = getState();
-    const entry = {
-      id: Date.now().toString(),
-      savedAt: new Date().toISOString(),
-      project: { 
-        ...state.project, 
-        ajusteComercial: { ...(state.project.ajusteComercial || {}) } 
-      },
-      team: [...state.team],
-      costs: { ...state.costs },
-      result: {
-        valorFinal: result.valorFinal,
-        valorFinalBase: result.valorFinalBase,
-        horasFinais: result.horasFinais,
-        custoInternoTotal: result.custoInternoTotal,
-        margemBruta: result.margemBruta,
-        margemReal: result.margemReal,
-        determinante: result.determinante,
-      },
-      // AI-ready: store raw inputs for future ML training
-      aiPayload: {
-        disciplina: state.project.disciplina,
-        area: state.project.area,
-        complexidade: state.project.complexidade,
-        horasFinais: result.horasFinais,
-        valorFinal: result.valorFinal,
-        horasRealizadas: null, // filled later by user
-      },
-    };
-
-    setState(s => ({
-      history: [entry, ...s.history].slice(0, 100), // keep last 100 projects
-    }));
-
-    return entry.id;
-  }
-
-  /**
-   * Updates realized hours for a history entry (for AI learning).
-   * @param {string} id
-   * @param {number} horasRealizadas
-   */
-  function updateHistoryRealized(id, horasRealizadas) {
-    setState(s => ({
-      history: s.history.map(h =>
-        h.id === id
-          ? { ...h, aiPayload: { ...h.aiPayload, horasRealizadas } }
-          : h
-      ),
-    }));
-  }
-
-  /**
-   * Removes a history entry.
-   * @param {string} id
-   */
-  function deleteHistoryEntry(id) {
-    setState(s => ({ history: s.history.filter(h => h.id !== id) }));
-  }
+  // Mutating history is no longer handled synchronously in store.
+  // Instead, the UI calls App.Supabase.saveProjectHistory(), waits for DB success,
+  // then updates the store array (by refetching or concatenating) via setState.
 
   /**
    * Resets project data to default (preserves master data and history).
@@ -230,9 +179,6 @@ App.Store = (function () {
     getState,
     setState,
     subscribe,
-    saveToHistory,
-    updateHistoryRealized,
-    deleteHistoryEntry,
     resetProject,
   };
 })();
