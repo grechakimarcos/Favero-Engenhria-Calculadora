@@ -437,8 +437,8 @@ App.Main = (function () {
             const newHistory = await App.Supabase.fetchHistory();
             Store.setState({ history: newHistory });
             UI.renderHistory(Store.getState().history);
-            Charts.renderHistoricoValores('chart-historico', Store.getState().history);
-            Charts.renderHorasComparativo('chart-horas-comparativo', Store.getState().history);
+            Charts.renderCustosLucro('chart-custo-lucro', Store.getState().history);
+            Charts.renderHorasColaborador('chart-horas-colaborador', Store.getState().history);
             UI.toast('Projeto excluído do histórico.', 'success');
           } else {
             UI.toast('Erro ao excluir projeto.', 'error');
@@ -459,7 +459,7 @@ App.Main = (function () {
             const newHistory = await App.Supabase.fetchHistory();
             Store.setState({ history: newHistory });
             UI.renderHistory(Store.getState().history);
-            Charts.renderHorasComparativo('chart-horas-comparativo', Store.getState().history);
+            Charts.renderHorasColaborador('chart-horas-colaborador', Store.getState().history);
             UI.toast('Horas realizadas registradas na nuvem!');
           } else {
             UI.toast('Erro ao atualizar horas', 'error');
@@ -531,7 +531,8 @@ App.Main = (function () {
         const newHistory = await App.Supabase.fetchHistory();
         Store.setState({ history: newHistory });
         UI.renderHistory(Store.getState().history);
-        Charts.renderHistoricoValores('chart-historico', Store.getState().history);
+        Charts.renderCustosLucro('chart-custo-lucro', Store.getState().history);
+        Charts.renderHorasColaborador('chart-horas-colaborador', Store.getState().history);
         UI.toast('Projeto salvo com sucesso na nuvem!');
       } else {
         UI.toast('Falha ao salvar o projeto.', 'error');
@@ -675,8 +676,8 @@ App.Main = (function () {
   // ── History Charts Section ─────────────────────────────────────────────────
   function _initHistoryCharts() {
     const state = Store.getState();
-    Charts.renderHistoricoValores('chart-historico', state.history);
-    Charts.renderHorasComparativo('chart-horas-comparativo', state.history);
+    Charts.renderCustosLucro('chart-custo-lucro', state.history);
+    Charts.renderHorasColaborador('chart-horas-colaborador', state.history);
   }
 
   // ── Sidebar Toggle ─────────────────────────────────────────────────────────

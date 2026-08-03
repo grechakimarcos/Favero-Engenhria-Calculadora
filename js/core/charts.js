@@ -128,23 +128,20 @@ App.Charts = (function () {
     });
   }
 
-  // ── Horas Previstas vs Realizadas — Horizontal Bar ─────────────────────────
-  function renderHorasComparativo(canvasId, history) {
+  // ── Custos vs Lucros (Últimos 30 dias) ─────────────────────────────────────
+  function renderCustosLucro(canvasId, history) {
     _destroy(canvasId);
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
 
-    const dados = (history || [])
-      .filter(h => h.aiPayload && h.aiPayload.horasRealizadas !== null)
-      .slice(0, 8)
-      .reverse();
-
+    const dados = (history || []).slice(0, 15).reverse();
+    
     if (dados.length === 0) {
-      canvas.parentElement.innerHTML = '<p class="chart-empty">Sem dados. Cadastre horas realizadas no histórico.</p>';
+      canvas.parentElement.innerHTML = '<p class="chart-empty">Nenhum projeto calculado recentemente.</p>';
       return;
     }
 
-    const labels = dados.map(h => h.project.nome || `Projeto #${h.id.slice(-4)}`);
+    const labels = dados.map(h => h.project.nome || `#${h.id.slice(-4)}`);
 
     _instances[canvasId] = new Chart(canvas, {
       type: 'bar',
@@ -152,95 +149,106 @@ App.Charts = (function () {
         labels,
         datasets: [
           {
-            label: 'Horas Previstas',
-            data: dados.map(h => h.result.horasFinais),
-            backgroundColor: 'rgba(76, 139, 245, 0.7)',
-            borderColor: '#4C8BF5',
+            label: 'Custo Total',
+            data: dados.map(h => h.result.custoInternoTotal || h.result.custoInterno || 0),
+            backgroundColor: 'rgba(239, 68, 68, 0.7)',
+            borderColor: '#EF4444',
             borderWidth: 2,
             borderRadius: 6,
           },
           {
-            label: 'Horas Realizadas',
-            data: dados.map(h => h.aiPayload.horasRealizadas),
+            label: 'Lucro Líquido',
+            data: dados.map(h => {
+              if (h.result.lucroLiquido !== undefined) return h.result.lucroLiquido;
+              const custo = h.result.custoInternoTotal || h.result.custoInterno || 0;
+              const liquido = h.result.valorLiquido !== undefined ? h.result.valorLiquido : (h.result.valorFinal || 0);
+              return liquido - custo;
+            }),
             backgroundColor: 'rgba(16, 185, 129, 0.7)',
             borderColor: '#10B981',
             borderWidth: 2,
             borderRadius: 6,
           },
+          {
+            label: 'Valor Final',
+            type: 'line',
+            data: dados.map(h => h.result.valorFinal),
+            borderColor: '#4C8BF5',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointBackgroundColor: '#4C8BF5',
+            pointRadius: 4,
+            tension: 0.3,
+          },
         ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#CBD5E1', font: { size: 12 } } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${_moeda(ctx.raw)}` } },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#CBD5E1', font: { size: 11 } } },
+          y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#8892A4', callback: v => v >= 1000 ? `R$${(v/1000).toFixed(1)}k` : `R$${v.toFixed(0)}` } },
+        },
+      },
+    });
+  }
+
+  // ── Horas por Colaborador (Últimos 30 dias) ────────────────────────────────
+  function renderHorasColaborador(canvasId, history) {
+    _destroy(canvasId);
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const dados = (history || []);
+    
+    const horasPorPessoa = {};
+    dados.forEach(h => {
+      if (h.result && h.result.detalhesEquipe) {
+        h.result.detalhesEquipe.forEach(membro => {
+          if (!horasPorPessoa[membro.nome]) {
+            horasPorPessoa[membro.nome] = 0;
+          }
+          horasPorPessoa[membro.nome] += Number(membro.horasAjustadas || membro.horas || 0);
+        });
+      }
+    });
+
+    const labels = Object.keys(horasPorPessoa);
+    const valores = Object.values(horasPorPessoa);
+
+    if (labels.length === 0) {
+      canvas.parentElement.innerHTML = '<p class="chart-empty">Nenhum membro de equipe alocado recentemente.</p>';
+      return;
+    }
+
+    _instances[canvasId] = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Horas Previstas',
+          data: valores,
+          backgroundColor: 'rgba(139, 92, 246, 0.7)',
+          borderColor: '#8B5CF6',
+          borderWidth: 2,
+          borderRadius: 6,
+        }],
       },
       options: {
         indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: {
-            labels: { color: '#CBD5E1', font: { size: 12 } },
-          },
-          tooltip: {
-            callbacks: {
-              label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(1)}h`,
-            },
-          },
-        },
-        scales: {
-          x: {
-            grid: { color: 'rgba(255,255,255,0.06)' },
-            ticks: { color: '#8892A4' },
-          },
-          y: {
-            grid: { display: false },
-            ticks: { color: '#CBD5E1', font: { size: 11 } },
-          },
-        },
-      },
-    });
-  }
-
-  // ── KPI Sparkline — Line ───────────────────────────────────────────────────
-  function renderHistoricoValores(canvasId, history) {
-    _destroy(canvasId);
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-
-    const dados = (history || []).slice(0, 10).reverse();
-    if (dados.length < 2) {
-      canvas.parentElement.innerHTML = '<p class="chart-empty">Adicione pelo menos 2 projetos para ver a evolução.</p>';
-      return;
-    }
-
-    _instances[canvasId] = new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels: dados.map(h => h.project.nome || `#${h.id.slice(-4)}`),
-        datasets: [{
-          label: 'Valor Final (R$)',
-          data: dados.map(h => h.result.valorFinal),
-          borderColor: '#10B981',
-          backgroundColor: 'rgba(16, 185, 129, 0.1)',
-          borderWidth: 2,
-          pointBackgroundColor: '#10B981',
-          pointRadius: 5,
-          fill: true,
-          tension: 0.3,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: ctx => ` ${_moeda(ctx.raw)}` } },
+          tooltip: { callbacks: { label: ctx => ` Horas Totais: ${ctx.raw.toFixed(1)}h` } },
         },
         scales: {
-          y: {
-            grid: { color: 'rgba(255,255,255,0.06)' },
-            ticks: { color: '#8892A4', callback: v => `R$${(v/1000).toFixed(0)}k` },
-          },
-          x: {
-            grid: { display: false },
-            ticks: { color: '#CBD5E1', font: { size: 11 } },
-          },
+          x: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#8892A4' } },
+          y: { grid: { display: false }, ticks: { color: '#CBD5E1', font: { size: 11 } } },
         },
       },
     });
@@ -249,7 +257,7 @@ App.Charts = (function () {
   return {
     renderCustoComposicao,
     renderCandidatosPreco,
-    renderHorasComparativo,
-    renderHistoricoValores,
+    renderCustosLucro,
+    renderHorasColaborador,
   };
 })();

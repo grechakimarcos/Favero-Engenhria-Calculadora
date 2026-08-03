@@ -133,22 +133,36 @@ App.Calculator = (function () {
     let custoInternoEquipe = 0;
     const detalhesEquipe = [];
 
-    if (team.length > 0 && horasEquipe > 0) {
+    if (team.length > 0) {
+      const isEquallyDistributed = horasEquipe === 0;
+      const equalHours = isEquallyDistributed ? (horasFinais / team.length) : 0;
+      
       team.forEach(membro => {
         const colab = collaborators.find(c => c.id === membro.colaboradorId);
         if (!colab) return;
-        const horasAjustadas = (Number(membro.horas) || 0) * fatorDistribuicao;
+        
+        let horasAjustadas = 0;
+        let inputHoras = Number(membro.horas) || 0;
+        
+        if (isEquallyDistributed) {
+          horasAjustadas = equalHours;
+          inputHoras = equalHours; // Assume equal for display
+        } else {
+          horasAjustadas = inputHoras * fatorDistribuicao;
+        }
+
         const custoHora = custoRealHoraPorColaborador(colab, indirectCosts, collaborators);
         const custoTotal = horasAjustadas * custoHora;
         custoInternoEquipe += custoTotal;
+        
         detalhesEquipe.push({
           nome: colab.nome,
           cargo: colab.cargo,
-          horas: Number(membro.horas) || 0,
+          horas: inputHoras,
           horasAjustadas,
           custoHora,
           custoTotal,
-          percentual: 0, // filled below
+          percentual: 0,
         });
       });
       // Calculate % of total for each member
@@ -156,7 +170,7 @@ App.Calculator = (function () {
         d.percentual = custoInternoEquipe > 0 ? (d.custoTotal / custoInternoEquipe) * 100 : 0;
       });
     } else {
-      // Fallback: use office average
+      // Fallback: use office average if NO team members are selected at all
       const media = custoMedioHora(collaborators, indirectCosts);
       custoInternoEquipe = horasFinais * media;
     }

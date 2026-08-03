@@ -57,12 +57,25 @@ App.Router = (function () {
 
     // Re-render history charts when switching to the historico view
     if (viewId === 'historico' && window.App?.Charts && window.App?.Store) {
-      const history = App.Store.getState().history;
+      // Renderiza instantaneamente com os dados em cache para não dar tela preta
+      let history = App.Store.getState().history || [];
       requestAnimationFrame(() => {
-        App.Charts.renderHistoricoValores('chart-historico', history);
-        App.Charts.renderHorasComparativo('chart-horas-comparativo', history);
+        App.Charts.renderCustosLucro('chart-custo-lucro', history);
+        App.Charts.renderHorasColaborador('chart-horas-colaborador', history);
         App.UI.renderHistory(history);
       });
+      
+      // Busca dados fresquinhos do banco de dados na nuvem e atualiza silenciosamente
+      if (window.App?.Supabase) {
+        App.Supabase.fetchHistory().then(newHistory => {
+          if (newHistory) {
+            App.Store.setState({ history: newHistory });
+            App.Charts.renderCustosLucro('chart-custo-lucro', newHistory);
+            App.Charts.renderHorasColaborador('chart-horas-colaborador', newHistory);
+            App.UI.renderHistory(newHistory);
+          }
+        }).catch(err => console.error("Erro ao atualizar histórico:", err));
+      }
     }
 
     if (viewId === 'parametros' && window.App?.SettingsUI) {
