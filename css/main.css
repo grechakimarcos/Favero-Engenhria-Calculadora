@@ -2,11 +2,20 @@
    MAIN CSS ENTRY POINT — Import Order Matters
    ============================================================ */
 
-/* 1. Design Tokens and Globals (HSL + Typography) */
+/* 1. Design Tokens + Typography + Globals */
 @import url('variables.css');
 
-/* 2. Legacy design system — Dark mode theme + all base styles */
+/* 2. Base design system (dark theme, all component styles) */
 @import url('legacy.css');
 
-/* 2. Layout shell (sidebar + main-wrapper) — overrides body/layout for SPA */
+/* 3. SPA Layout shell (sidebar + main-wrapper) */
 @import url('layout.css');
+
+/* 4. Users Dashboard view */
+@import url('users-dashboard.css');
+
+/* 5. New User modal */
+@import url('users-modal.css');
+
+/* 6. Premium polish — animations, utilities, modern overrides */
+@import url('custom.css');

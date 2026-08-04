@@ -37,9 +37,10 @@ BEGIN
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)),
-    -- Para evitar bloquear os donos atuais da calculadora, vamos definir a role inicial como 'admin'.
-    -- Em produção futura, mude o default para 'visitante'.
-    'admin',
+    -- IMPORTANTE: role padrão = 'visitante' para segurança.
+    -- Após criar um usuário, um admin deve elevar manualmente sua role
+    -- no painel de Gestão de Usuários do sistema ou via Supabase Dashboard.
+    'visitante',
     true
   );
   RETURN new;

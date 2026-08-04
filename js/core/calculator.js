@@ -13,15 +13,15 @@ App.Calculator = (function () {
   // ── Office-Level Aggregations ──────────────────────────────────────────────
 
   function totalHorasProdutivas(collaborators) {
-    return collaborators.reduce((s, c) => s + (c.horasMensais || 0), 0);
+    return collaborators.reduce((s, c) => s + ((c && c.horasMensais) || 0), 0);
   }
 
   function totalCustosDiretos(collaborators) {
-    return collaborators.reduce((s, c) => s + (c.custoMensal || 0), 0);
+    return collaborators.reduce((s, c) => s + ((c && c.custoMensal) || 0), 0);
   }
 
   function totalCustosIndiretos(indirectCosts) {
-    return indirectCosts.reduce((s, c) => s + (c.valor || 0), 0);
+    return indirectCosts.reduce((s, c) => s + ((c && c.valor) || 0), 0);
   }
 
   function rateioIndiretoHora(indirectCosts, collaborators) {
@@ -114,8 +114,15 @@ App.Calculator = (function () {
    * @returns {object} result - Complete calculation result
    */
   function calcularResultado(state) {
-    const { project, team, costs, collaborators, indirectCosts, settings, disciplinas } = state;
-    const d = (disciplinas || {})[project.disciplina];
+    const project = state.project || {};
+    const team = Array.isArray(state.team) ? state.team : [];
+    const collaborators = Array.isArray(state.collaborators) ? state.collaborators : [];
+    const indirectCosts = Array.isArray(state.indirectCosts) ? state.indirectCosts : [];
+    const disciplinas = state.disciplinas || {};
+    const costs = state.costs || {};
+    const settings = state.settings || {};
+
+    const d = disciplinas[project.disciplina];
 
     if (!d) return null;
 
@@ -134,8 +141,10 @@ App.Calculator = (function () {
     const detalhesEquipe = [];
 
     if (team.length > 0) {
-      const isEquallyDistributed = horasEquipe === 0;
-      const equalHours = isEquallyDistributed ? (horasFinais / team.length) : 0;
+      // useEqualDistribution = true quando nenhuma hora foi informada na equipe,
+      // fazendo com que as horas finais sejam divididas igualmente entre os membros.
+      const useEqualDistribution = horasEquipe === 0;
+      const equalHours = useEqualDistribution ? (horasFinais / team.length) : 0;
       
       team.forEach(membro => {
         const colab = collaborators.find(c => c.id === membro.colaboradorId);
@@ -144,7 +153,7 @@ App.Calculator = (function () {
         let horasAjustadas = 0;
         let inputHoras = Number(membro.horas) || 0;
         
-        if (isEquallyDistributed) {
+        if (useEqualDistribution) {
           horasAjustadas = equalHours;
           inputHoras = equalHours; // Assume equal for display
         } else {

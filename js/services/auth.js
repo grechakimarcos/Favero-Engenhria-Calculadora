@@ -80,7 +80,14 @@ App.Auth = (function () {
 
   // ── Post Login: Load cloud data ───────────────────────────────────────────────
   async function _postLogin(user) {
-    const cloudData = await App.Supabase.loadAllFromCloud();
+    let cloudData;
+    try {
+      cloudData = await App.Supabase.loadAllFromCloud();
+    } catch (err) {
+      console.error('[Auth] Falha ao carregar dados da nuvem:', err);
+      App.UI.toast('Erro ao carregar dados. Verifique sua conexão e recarregue a página.', 'error');
+      // Continua com dados locais (do localStorage via Store)
+    }
     
     if (cloudData && cloudData.profile) {
       // 1. Verifica bloqueio temporário
@@ -103,22 +110,7 @@ App.Auth = (function () {
     _updateHeader(user);
 
     if (cloudData) {
-      const patch = {};
-      if (cloudData.collaborators) patch.collaborators = cloudData.collaborators;
-      if (cloudData.indirectCosts) patch.indirectCosts = cloudData.indirectCosts;
-      if (cloudData.disciplinas)   patch.disciplinas   = cloudData.disciplinas;
-      if (cloudData.history)       patch.history       = cloudData.history;
-      if (cloudData.profile)       patch.profile       = cloudData.profile;
-      if (cloudData.settings)      patch.settings      = {
-        metaMensal:          cloudData.settings.meta_mensal,
-        impostoSimples:      cloudData.settings.imposto_simples,
-        multiplicadorMinimo: cloudData.settings.multiplicador_minimo,
-      };
-      if (Object.keys(patch).length > 0) {
-        App.Store.setState(patch);
-      }
-      
-      _applyPermissions(cloudData.profile);
+      _applyCloudData(cloudData);
     }
 
     if (typeof _onLoginSuccess === 'function') {
@@ -128,45 +120,97 @@ App.Auth = (function () {
     App.UI.toast(`Bem-vindo, ${user.email.split('@')[0]}!`, 'success');
   }
 
+  // ── Apply Cloud Data to Store ─────────────────────────────────────────────────
+  // Função centralizada para evitar duplicação entre _postLogin e force-password flow
+  function _applyCloudData(cloudData) {
+    if (!cloudData) return;
+    const patch = {};
+    if (cloudData.collaborators) patch.collaborators = cloudData.collaborators;
+    if (cloudData.indirectCosts) patch.indirectCosts = cloudData.indirectCosts;
+    if (cloudData.disciplinas)   patch.disciplinas   = cloudData.disciplinas;
+    if (cloudData.history)       patch.history       = cloudData.history;
+    if (cloudData.profile)       patch.profile       = cloudData.profile;
+    if (cloudData.settings)      patch.settings      = {
+      metaMensal:          cloudData.settings.meta_mensal,
+      impostoSimples:      cloudData.settings.imposto_simples,
+      multiplicadorMinimo: cloudData.settings.multiplicador_minimo,
+    };
+    if (Object.keys(patch).length > 0) {
+      App.Store.setState(patch);
+    }
+    _applyPermissions(cloudData.profile);
+  }
+
   // ── Role Based Access Control (RBAC) ─────────────────────────────────────────
   function _applyPermissions(profile) {
-    console.log('[RBAC] Perfil carregado do banco de dados:', profile);
+    console.debug('[RBAC] Perfil carregado:', profile?.role || 'visitante');
     const role = profile?.role || 'visitante';
-    const isVisitante = role === 'visitante';
     const isAdmin = role === 'admin';
     
     // Mostra/Oculta menu de Gestão de Usuários e Parâmetros
-    const menuUsuarios = document.getElementById('menu-usuarios');
+    const menuUsuarios  = document.getElementById('menu-usuarios');
     const menuParametros = document.getElementById('menu-parametros');
     
-    if (menuUsuarios) {
-      menuUsuarios.style.display = isAdmin ? 'flex' : 'none';
-    }
-    if (menuParametros) {
-      menuParametros.style.display = isAdmin ? 'flex' : 'none';
+    if (menuUsuarios)   menuUsuarios.style.display  = isAdmin ? 'flex' : 'none';
+    if (menuParametros) menuParametros.style.display = isAdmin ? 'flex' : 'none';
+
+    // Guard de segurança: se a view ativa for restrita e o usuário não for admin,
+    // redireciona para a calculadora sem alterar o comportamento visível para admins.
+    const currentView = document.querySelector('.view.active')?.id;
+    if (!isAdmin && (currentView === 'view-usuarios' || currentView === 'view-parametros')) {
+      console.debug('[RBAC] Acesso negado à view restrita. Redirecionando para calculadora.');
+      if (App.Router && typeof App.Router.navigate === 'function') {
+        App.Router.navigate('calculadora');
+      }
     }
   }
 
   // ── Update Header with User Info ──────────────────────────────────────────────
+  // Usa criação segura de elementos DOM para evitar XSS com dados do banco.
   function _updateHeader(user) {
     const container = document.getElementById('user-info-container');
     if (!container) return;
-    const name = user.email.split('@')[0];
-    const initials = name.slice(0, 2).toUpperCase();
-    
-    const profile = App.Supabase.getProfile();
-    const roleBadge = profile?.role ? `<span style="font-size: 0.65rem; background: var(--primary-dim); color: var(--primary); padding: 2px 6px; border-radius: 4px; margin-top: 2px; text-transform: uppercase;">${profile.role}</span>` : '';
 
-    container.innerHTML = `
-      <div class="user-chip" id="btn-account-menu" role="button" tabindex="0" title="Minha Conta">
-        <div class="user-avatar">${initials}</div>
-        <div style="display: flex; flex-direction: column;">
-          <span class="user-name">${name}</span>
-          ${roleBadge}
-        </div>
-      </div>`;
-    
-    document.getElementById('btn-account-menu')?.addEventListener('click', _openAccountModal);
+    // Dados de texto: usar textContent (nunca innerHTML com valores externos)
+    const name     = (user.email || '').split('@')[0];
+    const initials = name.slice(0, 2).toUpperCase();
+    const profile  = App.Supabase.getProfile();
+    const role     = profile?.role || '';
+
+    // Construir DOM de forma segura
+    const chip = document.createElement('div');
+    chip.className = 'user-chip';
+    chip.id        = 'btn-account-menu';
+    chip.setAttribute('role', 'button');
+    chip.setAttribute('tabindex', '0');
+    chip.title     = 'Minha Conta';
+
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'user-avatar';
+    avatarDiv.textContent = initials;  // seguro: só texto
+
+    const infoDiv = document.createElement('div');
+    infoDiv.style.cssText = 'display:flex;flex-direction:column;';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'user-name';
+    nameSpan.textContent = name;  // seguro: só texto
+    infoDiv.appendChild(nameSpan);
+
+    if (role) {
+      const roleSpan = document.createElement('span');
+      roleSpan.style.cssText = 'font-size:0.65rem;background:var(--primary-dim);color:var(--primary);padding:2px 6px;border-radius:4px;margin-top:2px;text-transform:uppercase;';
+      roleSpan.textContent = role;  // seguro: só texto
+      infoDiv.appendChild(roleSpan);
+    }
+
+    chip.appendChild(avatarDiv);
+    chip.appendChild(infoDiv);
+
+    container.innerHTML = '';
+    container.appendChild(chip);
+
+    chip.addEventListener('click', _openAccountModal);
   }
 
   // ── Account Modal & User Management ───────────────────────────────────────────
@@ -502,24 +546,15 @@ App.Auth = (function () {
         document.getElementById('force-password-overlay').style.display = 'none';
         App.UI.toast('Senha alterada com sucesso!', 'success');
         
-        // Retoma o login
+        // Retoma o login usando a função centralizada _applyCloudData (evita duplicação)
         const user = App.Supabase.getCurrentUser();
         _updateHeader(user);
-        const patch = {};
-        const cloudData = await App.Supabase.loadAllFromCloud();
-        if (cloudData) {
-          if (cloudData.collaborators) patch.collaborators = cloudData.collaborators;
-          if (cloudData.indirectCosts) patch.indirectCosts = cloudData.indirectCosts;
-          if (cloudData.disciplinas)   patch.disciplinas   = cloudData.disciplinas;
-          if (cloudData.history)       patch.history       = cloudData.history;
-          if (cloudData.profile)       patch.profile       = cloudData.profile;
-          if (cloudData.settings)      patch.settings      = {
-            metaMensal:          cloudData.settings.meta_mensal,
-            impostoSimples:      cloudData.settings.imposto_simples,
-            multiplicadorMinimo: cloudData.settings.multiplicador_minimo,
-          };
-          if (Object.keys(patch).length > 0) App.Store.setState(patch);
-          _applyPermissions(cloudData.profile);
+        try {
+          const cloudData = await App.Supabase.loadAllFromCloud();
+          _applyCloudData(cloudData);
+        } catch (err) {
+          console.error('[Auth] Falha ao recarregar dados após troca de senha:', err);
+          App.UI.toast('Dados carregados parcialmente. Recarregue a página se necessário.', 'error');
         }
         if (typeof _onLoginSuccess === 'function') _onLoginSuccess(user);
       });

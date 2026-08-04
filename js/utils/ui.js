@@ -63,6 +63,10 @@ App.UI = (function () {
     });
   }
 
+  function renderMetric(label, value, extraClass = '') {
+    return `<div class="metric ${extraClass}"><small>${label}</small><strong>${value}</strong></div>`;
+  }
+
   // ── Stepper ────────────────────────────────────────────────────────────────
   function updateStepper(currentStep) {
     document.querySelectorAll('.step-item, .calc-step').forEach((el, i) => {
@@ -71,7 +75,7 @@ App.UI = (function () {
     });
     
     // Update progress bar & counters
-    const progress = Math.round((currentStep / 5) * 100);
+    const progress = Math.round((currentStep / 7) * 100);
     const bar = document.getElementById('wizard-progress-bar');
     if (bar) bar.style.width = progress + '%';
     
@@ -88,42 +92,32 @@ App.UI = (function () {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // ── Select Builder ─────────────────────────────────────────────────────────
+  // ── Select Builder ─────────────────────────────────────────────────────
+  // Utilitário para escapar valores antes de inserir em HTML (previne XSS)
+  function _escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function buildOptions(map, selected) {
     return Object.entries(map)
-      .map(([val, label]) => `<option value="${val}" ${String(val) === String(selected) ? 'selected' : ''}>${label}</option>`)
+      .map(([val, label]) => `<option value="${_escapeHtml(val)}" ${String(val) === String(selected) ? 'selected' : ''}>${_escapeHtml(label)}</option>`)
       .join('');
   }
 
-  // ── Metric Card ────────────────────────────────────────────────────────────
-  function renderMetric(label, value, variant = '', id = '') {
-    return `
-      <div class="metric ${variant}" ${id ? `id="${id}"` : ''}>
-        <small>${label}</small>
-        <strong>${value}</strong>
-      </div>`;
-  }
-
-  // ── Badge ──────────────────────────────────────────────────────────────────
-  function badge(text, color = 'primary') {
-    return `<span class="badge badge-${color}">${text}</span>`;
-  }
-
-  // ── Step 1: Project Data Form ──────────────────────────────────────────────
+  // ── Metric Card ───────────────────────────────────  // ── Step 1: Project Data Form (Basic Setup) ────────────────────────────────
   function renderStep1(state) {
     const p = state.project;
     const el = document.getElementById('step1-content');
     if (!el) return;
     el.innerHTML = `
-      <style>
-        .calc-category { margin-top: 1.5rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
-        .calc-category h3 { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin: 0; }
-        .calc-category svg { color: var(--primary); opacity: 0.8; }
-      </style>
-
       <div class="calc-category" style="margin-top:0;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        <h3>Dados do Projeto</h3>
+        <h3>Informações Gerais</h3>
       </div>
       <div class="grid-2">
         <div class="stt-field-card">
@@ -148,118 +142,80 @@ App.UI = (function () {
             <div class="stt-input-wrap"><input type="date" id="proj-data" class="stt-input" value="${p.data || ''}" /></div>
           </div>
         </div>
-        <div class="stt-field-card">
-          <div class="stt-field-icon stt-icon-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
-          <div class="stt-field-body">
-            <label class="stt-label" for="proj-area">Área do Projeto</label>
-            <div class="stt-input-wrap"><input type="text" id="proj-area" class="stt-input mask-number" value="${p.area || ''}" placeholder="0" /><div class="stt-suffix">m²</div></div>
-            <div class="stt-hint">Referência principal para estimativa (opcional)</div>
-          </div>
-        </div>
-        <div class="stt-field-card">
-          <div class="stt-field-icon stt-icon-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-          <div class="stt-field-body">
-            <label class="stt-label" for="proj-horas-manuais">Horas Manuais</label>
-            <div class="stt-input-wrap"><input type="text" id="proj-horas-manuais" class="stt-input mask-number" value="${p.horasManuais || ''}" placeholder="Deixe em branco" /><div class="stt-suffix">h</div></div>
-            <div class="stt-hint">Caso informado, substitui o cálculo por m²</div>
-          </div>
-        </div>
       </div>
-
-      <div class="calc-category">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-        <h3>Características</h3>
-      </div>
-      <div class="grid-2">
-        <div class="stt-field-card">
-          <div class="stt-field-icon stt-icon-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-          <div class="stt-field-body">
-            <label class="stt-label" for="proj-disciplina">Disciplina</label>
-            <div class="stt-input-wrap">
-              <select id="proj-disciplina" class="stt-input">${buildOptions(Object.fromEntries(Object.entries(state.disciplinas || {}).map(([k, v]) => [k, v.nome])), p.disciplina)}</select>
-            </div>
-          </div>
-        </div>
-        <div class="stt-field-card">
-          <div class="stt-field-icon stt-icon-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4M9 7h6M9 11h6M9 15h6"/></svg></div>
-          <div class="stt-field-body">
-            <label class="stt-label" for="proj-edificacao">Tipo de Edificação</label>
-            <div class="stt-input-wrap">
-              <select id="proj-edificacao" class="stt-input">${buildOptions(Config.LABELS_EDIFICACAO, p.tipoEdificacao)}</select>
-            </div>
-          </div>
-        </div>
-        <div class="stt-field-card">
-          <div class="stt-field-icon stt-icon-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
-          <div class="stt-field-body">
-            <label class="stt-label" for="proj-complexidade">Complexidade (CMP)</label>
-            <div class="stt-input-wrap">
-              <select id="proj-complexidade" class="stt-input">${buildOptions(Config.LABELS_COMPLEXIDADE, p.complexidade)}</select>
-            </div>
-          </div>
-        </div>
-        <div class="stt-field-card">
-          <div class="stt-field-icon stt-icon-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
-          <div class="stt-field-body">
-            <label class="stt-label" for="proj-tipo-comercial">Tipo Comercial</label>
-            <div class="stt-input-wrap">
-              <select id="proj-tipo-comercial" class="stt-input">${buildOptions(Config.LABELS_TIPO, p.tipoComercial)}</select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="calc-category">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        <h3>Fatores e Multiplicadores</h3>
-      </div>
-      <div class="grid-2">
-        <div class="stt-field-card">
-          <div class="stt-field-icon stt-icon-yellow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-          <div class="stt-field-body">
-            <label class="stt-label" for="proj-urgencia">Fator de Urgência</label>
-            <div class="stt-input-wrap">
-              <select id="proj-urgencia" class="stt-input">${buildOptions(Config.LABELS_URGENCIA, p.fatorUrgencia)}</select>
-            </div>
-            <div class="stt-hint">Acresce valor para entregas rápidas</div>
-          </div>
-        </div>
-        <div class="stt-field-card">
-          <div class="stt-field-icon stt-icon-yellow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-          <div class="stt-field-body">
-            <label class="stt-label" for="proj-risco">Fator de Risco</label>
-            <div class="stt-input-wrap">
-              <select id="proj-risco" class="stt-input">${buildOptions(Config.LABELS_RISCO, p.fatorRisco)}</select>
-            </div>
-            <div class="stt-hint">Gordura para incertezas do projeto</div>
-          </div>
-        </div>
-        <div class="stt-field-card">
-          <div class="stt-field-icon stt-icon-yellow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
-          <div class="stt-field-body">
-            <label class="stt-label" for="proj-revisao">Fator de Revisão</label>
-            <div class="stt-input-wrap">
-              <select id="proj-revisao" class="stt-input">${buildOptions(Config.LABELS_REVISAO, p.revisao)}</select>
-            </div>
-          </div>
-        </div>
-        <div class="stt-field-card">
-          <div class="stt-field-icon stt-icon-yellow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
-          <div class="stt-field-body">
-            <label class="stt-label" for="proj-aprovacao">Fator de Aprovação</label>
-            <div class="stt-input-wrap">
-              <select id="proj-aprovacao" class="stt-input">${buildOptions(Config.LABELS_APROVACAO, p.aprovacao)}</select>
-            </div>
-          </div>
-        </div>
-      </div>`;
+    `;
     initMasks(el);
   }
 
   // ── Step 2: Team ───────────────────────────────────────────────────────────
   function renderStep2(state, result) {
+    const el = document.getElementById('step2-content');
+    if (!el) return;
+
+    el.innerHTML = `
+      <div class="calc-panel-header" style="margin-bottom: 24px;">
+        <div class="calc-panel-icon calc-icon-purple">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="calc-panel-title">Equipe do Projeto</h2>
+          <p class="calc-panel-sub">Informe as horas de cada colaborador neste projeto</p>
+        </div>
+        <button id="add-team-member-btn" class="btn btn-secondary btn-sm" style="margin-left: auto;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: text-bottom;">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Adicionar Colaborador
+        </button>
+      </div>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <h2>📌 Alocação no Projeto
+          <span class="badge badge-primary" id="team-count-badge">${state.team.length} membros</span>
+        </h2>
+        <div class="hint" style="margin-bottom: 16px; font-size: 13px; color: var(--text-muted);">
+          💡 As horas da equipe têm <strong>prioridade máxima</strong> sobre área e horas manuais. Se informadas, ditarão o tempo total do projeto.
+        </div>
+        <div id="step2-team-list"></div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+          <h2 style="margin-bottom:0; border:none; padding:0;">🧑‍💼 Cadastro de Colaboradores</h2>
+          <button id="add-collaborator-btn" class="btn btn-secondary btn-sm">+ Novo Colaborador</button>
+        </div>
+        <div class="table-wrapper">
+          <table aria-label="Colaboradores cadastrados">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Cargo</th>
+                <th>Custo Mensal</th>
+                <th>Horas/Mês</th>
+                <th>Produtividade</th>
+                <th>Custo Direto/h</th>
+                <th>Rateio/h</th>
+                <th>Custo Real/h</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="colabs-table-body">
+              <tr>
+                <td colspan="9" class="table-empty">Carregando...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
     const container = document.getElementById('step2-team-list');
-    if (!container) return;
 
     const colabOptions = state.collaborators
       .map(c => `<option value="${c.id}">${c.nome} — ${c.cargo}</option>`)
@@ -301,30 +257,10 @@ App.UI = (function () {
           </div>`;
         }).join('');
 
-    // Hours preview card
+    // Hours preview card has been moved to a later step in the new flow
     const previewEl = document.getElementById('step2-hours-preview');
-    if (previewEl && result) {
-      const f = result.fatores || {};
-      const pct = v => v === 1 ? '<span class="factor-neutral">1.00×</span>' : v > 1 ? `<span class="factor-up">+${((v-1)*100).toFixed(0)}% (${v.toFixed(2)}×)</span>` : `<span class="factor-down">${((v-1)*100).toFixed(0)}% (${v.toFixed(2)}×)</span>`;
-      previewEl.innerHTML = `
-        <div class="hours-preview-grid">
-          ${renderMetric('Fonte das Horas', _fonteLabel(result.fonteHoras), 'metric-info')}
-          ${renderMetric('Horas Base', horas(result.horasBase))}
-          ${renderMetric('Fator de Esforço Total', `×${result.fatorEsforco.toFixed(3)}`, 'metric-accent')}
-          ${renderMetric('Horas Finais', horas(result.horasFinais), 'metric-accent')}
-        </div>
-        <div class="factors-breakdown">
-          <p class="factors-title">📊 Detalhamento do Fator de Esforço</p>
-          <div class="factors-grid">
-            <div class="factor-item"><span class="factor-label">🏠 Edificação</span>${pct(f.edificacao || 1)}</div>
-            <div class="factor-item"><span class="factor-label">🔄 Revisão</span>${pct(f.revisao || 1)}</div>
-            <div class="factor-item"><span class="factor-label">📋 Aprovação</span>${pct(f.aprovacao || 1)}</div>
-            <div class="factor-item"><span class="factor-label">⚙️ Complexidade</span>${pct(f.complexidade || 1)}</div>
-            <div class="factor-item"><span class="factor-label">⚠️ Risco</span>${pct(f.risco || 1)}</div>
-            <div class="factor-item"><span class="factor-label">⏱️ Urgência</span>${pct(f.urgencia || 1)}</div>
-            <div class="factor-item factor-tipo"><span class="factor-label">💼 Tipo Comercial</span>${pct(f.tipoComercial || 1)}</div>
-          </div>
-        </div>`;
+    if (previewEl) {
+      previewEl.style.display = 'none';
     }
 
     // Render collaborator master data table
@@ -373,14 +309,160 @@ App.UI = (function () {
     }).join('');
   }
 
-  // ── Step 3: Costs ──────────────────────────────────────────────────────────
+  // ── Step 3: Estimativa Base ────────────────────────────────────────────────
   function renderStep3(state) {
-    const costsEl = document.getElementById('step3-content');
+    const p = state.project;
+    const el = document.getElementById('step3-content');
+    if (!el) return;
+    el.innerHTML = `
+      <div class="calc-category" style="margin-top:0;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <h3>Referência de Cálculo</h3>
+      </div>
+      <div class="grid-2">
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-disciplina">Disciplina</label>
+            <div class="stt-input-wrap">
+              <select id="proj-disciplina" class="stt-input">${buildOptions(Object.fromEntries(Object.entries(state.disciplinas || {}).map(([k, v]) => [k, v.nome])), p.disciplina)}</select>
+            </div>
+          </div>
+        </div>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4M9 7h6M9 11h6M9 15h6"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-edificacao">Tipo de Edificação</label>
+            <div class="stt-input-wrap">
+              <select id="proj-edificacao" class="stt-input">${buildOptions(Config.LABELS_EDIFICACAO, p.tipoEdificacao)}</select>
+            </div>
+          </div>
+        </div>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-area">Área do Projeto (Estimativa)</label>
+            <div class="stt-input-wrap"><input type="text" id="proj-area" class="stt-input mask-number" value="${p.area || ''}" placeholder="0" /><div class="stt-suffix">m²</div></div>
+            <div class="stt-hint">Usada se não houver equipe ou horas manuais</div>
+          </div>
+        </div>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-horas-manuais">Horas Manuais (Opcional)</label>
+            <div class="stt-input-wrap"><input type="text" id="proj-horas-manuais" class="stt-input mask-number" value="${p.horasManuais || ''}" placeholder="Deixe em branco" /><div class="stt-suffix">h</div></div>
+            <div class="stt-hint">Substitui o cálculo por m² e as horas da equipe</div>
+          </div>
+        </div>
+      </div>
+    `;
+    initMasks(el);
+  }
+
+  // ── Step 4: Complexidade e Fatores ─────────────────────────────────────────
+  function renderStep4(state) {
+    const p = state.project;
+    const el = document.getElementById('step4-content');
+    if (!el) return;
+    el.innerHTML = `
+      <div class="calc-category" style="margin-top:0;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <h3>Fatores de Esforço e Multiplicadores</h3>
+      </div>
+      <div class="grid-2">
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-complexidade">Complexidade (CMP)</label>
+            <div class="stt-input-wrap">
+              <select id="proj-complexidade" class="stt-input">${buildOptions(Config.LABELS_COMPLEXIDADE, p.complexidade)}</select>
+            </div>
+          </div>
+        </div>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-tipo-comercial">Tipo Comercial</label>
+            <div class="stt-input-wrap">
+              <select id="proj-tipo-comercial" class="stt-input">${buildOptions(Config.LABELS_TIPO, p.tipoComercial)}</select>
+            </div>
+          </div>
+        </div>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-yellow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-revisao">Fator de Revisão</label>
+            <div class="stt-input-wrap">
+              <select id="proj-revisao" class="stt-input">${buildOptions(Config.LABELS_REVISAO, p.revisao)}</select>
+            </div>
+          </div>
+        </div>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-yellow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="proj-aprovacao">Fator de Aprovação</label>
+            <div class="stt-input-wrap">
+              <select id="proj-aprovacao" class="stt-input">${buildOptions(Config.LABELS_APROVACAO, p.aprovacao)}</select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="step4-hours-preview"></div>
+    `;
+
+    const result = App.Calculator ? App.Calculator.calcularResultado(state) : null;
+    const previewEl = document.getElementById('step4-hours-preview');
+    if (previewEl && result) {
+      const f = result.fatores || {};
+      const pct = v => v === 1 ? '<span class="factor-neutral">1.00×</span>' : v > 1 ? `<span class="factor-up">+${((v-1)*100).toFixed(0)}% (${v.toFixed(2)}×)</span>` : `<span class="factor-down">${((v-1)*100).toFixed(0)}% (${v.toFixed(2)}×)</span>`;
+      previewEl.innerHTML = `
+        <div class="card card-accent" style="margin-top: 24px;">
+          <div class="hours-preview-grid">
+            ${renderMetric('Fonte das Horas', _fonteLabel(result.fonteHoras), 'metric-info')}
+            ${renderMetric('Horas Base', horas(result.horasBase))}
+            ${renderMetric('Fator de Esforço Total', '×' + result.fatorEsforco.toFixed(3), 'metric-accent')}
+            ${renderMetric('Horas Finais', horas(result.horasFinais), 'metric-accent')}
+          </div>
+          <div class="factors-breakdown">
+            <p class="factors-title">📊 Detalhamento do Fator de Esforço</p>
+            <div class="factors-grid">
+              <div class="factor-item"><span class="factor-label">🏠 Edificação</span>${pct(f.edificacao || 1)}</div>
+              <div class="factor-item"><span class="factor-label">🔄 Revisão</span>${pct(f.revisao || 1)}</div>
+              <div class="factor-item"><span class="factor-label">📋 Aprovação</span>${pct(f.aprovacao || 1)}</div>
+              <div class="factor-item"><span class="factor-label">⚙️ Complexidade</span>${pct(f.complexidade || 1)}</div>
+              <div class="factor-item factor-tipo"><span class="factor-label">💼 Tipo Comercial</span>${pct(f.tipoComercial || 1)}</div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    initMasks(el);
+  }
+
+  // ── Step 5: Costs ──────────────────────────────────────────────────────────
+  function renderStep5(state) {
+    const costsEl = document.getElementById('step5-content');
     if (!costsEl) return;
 
-    const { costs, indirectCosts } = state;
+    const costs = state.costs || {};
+    const indirectCosts = Array.isArray(state.indirectCosts) ? state.indirectCosts : [];
+    const settings = state.settings || {};
+    const impostoPct = (settings.impostoSimples || 0) * 100;
     costsEl.innerHTML = `
-      <div class="grid-2">
+      <div class="calc-panel-header">
+        <div class="calc-panel-icon calc-icon-green">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="1" x2="12" y2="23" />
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="calc-panel-title">Custos e Margens</h2>
+          <p class="calc-panel-sub">Despesas diretas, custos indiretos e margem de lucro desejada</p>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom: 24px;">
         <div class="stt-field-card">
           <div class="stt-field-icon stt-icon-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></div>
           <div class="stt-field-body">
@@ -405,6 +487,14 @@ App.UI = (function () {
             <div class="stt-hint">Usada na precificação individual por colaborador</div>
           </div>
         </div>
+        <div class="stt-field-card">
+          <div class="stt-field-icon stt-icon-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><path d="M7 15h0M2 9h20M7 11h0"/></svg></div>
+          <div class="stt-field-body">
+            <label class="stt-label" for="cost-imposto">Imposto (Simples Nacional)</label>
+            <div class="stt-input-wrap"><input type="text" id="cost-imposto" class="stt-input mask-number" value="${impostoPct}" /><div class="stt-suffix">%</div></div>
+            <div class="stt-hint">Imposto sobre a nota fiscal</div>
+          </div>
+        </div>
       </div>
       <div class="calc-category">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
@@ -412,34 +502,202 @@ App.UI = (function () {
         <button class="btn btn-secondary btn-sm" id="add-indirect-btn" style="margin-left:auto;">+ Adicionar Item</button>
       </div>
       <div id="indirect-costs-list">
-        ${indirectCosts.map((c, i) => `
+        ${indirectCosts.map((c, i) => {
+          if (!c) return '';
+          return `
           <div class="indirect-row" data-idx="${i}">
             <div class="form-group">
               <label>Descrição</label>
-              <input type="text" class="indirect-nome" data-idx="${i}" value="${c.nome}" placeholder="Ex: Aluguel" />
+              <input type="text" class="indirect-nome" data-idx="${i}" value="${c.nome || ''}" placeholder="Ex: Aluguel" />
             </div>
             <div class="form-group">
               <label>Valor Mensal (R$)</label>
-              <input type="text" class="indirect-valor mask-money" data-idx="${i}" value="${c.valor}" />
+              <input type="text" class="indirect-valor mask-money" data-idx="${i}" value="${c.valor || 0}" />
             </div>
             <button class="btn-icon btn-danger indirect-remove-btn" data-idx="${i}" title="Remover">🗑️</button>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>
       <div class="indirect-total-box">
         <span>Total Custos Indiretos/mês:</span>
-        <strong>${moeda(indirectCosts.reduce((s, c) => s + (c.valor || 0), 0))}</strong>
-        <span class="muted">→ Rateio: ${moeda(App.Calculator.rateioIndiretoHora(indirectCosts, state.collaborators))}/h</span>
+        <strong>${moeda(indirectCosts.reduce((s, c) => s + ((c && c.valor) || 0), 0))}</strong>
+        <span class="muted">→ Rateio: ${moeda(App.Calculator.rateioIndiretoHora(indirectCosts, Array.isArray(state.collaborators) ? state.collaborators : []))}/h</span>
       </div>`;
     initMasks(costsEl);
   }
 
-  // ── Step 4: Result Dashboard ───────────────────────────────────────────────
-  function renderStep4(result, state) {
+  // ── Step 6: Result Dashboard ───────────────────────────────────────────────
+  function renderStep6(state, result) {
     if (!result) {
-      document.getElementById('step4-content').innerHTML =
+      document.getElementById('step6-content').innerHTML =
         `<div class="stt-empty-state"><svg class="stt-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><h4 class="stt-empty-title">Faltam Informações</h4><p class="stt-empty-desc">Preencha os dados básicos do projeto para visualizar os resultados do orçamento.</p></div>`;
       return;
     }
+    document.getElementById('step6-content').innerHTML = `
+      <div class="calc-panel-header" style="margin-bottom: 24px;">
+        <div class="calc-panel-icon calc-icon-yellow">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="calc-panel-title">Dashboard de Resultado</h2>
+          <p class="calc-panel-sub">Indicadores financeiros completos do projeto</p>
+        </div>
+      </div>
+
+      <!-- Main KPIs -->
+      <div class="kpi-grid" style="margin-bottom: 24px;">
+        <div class="kpi-block kpi-final" id="kpi-block-final">
+          <small>Preço Final Sugerido</small>
+          <strong id="kpi-valor-final">R$ —</strong>
+          <div class="kpi-sub" id="kpi-determinante">—</div>
+        </div>
+        <div class="kpi-block"><small>Custo Interno Total</small><strong id="kpi-custo-total">R$ —</strong>
+        </div>
+        <div class="kpi-block"><small>Lucro Bruto</small><strong id="kpi-lucro-bruto">R$ —</strong></div>
+        <div class="kpi-block"><small>Lucro Líquido</small><strong id="kpi-lucro-liq">R$ —</strong></div>
+        <div class="kpi-block kpi-success"><small>Margem Bruta</small><strong id="kpi-margem-bruta">—</strong>
+        </div>
+        <div class="kpi-block"><small>Mark-up</small><strong id="kpi-markup">—</strong></div>
+        <div class="kpi-block"><small>Rentabilidade</small><strong id="kpi-rentabilidade">—</strong></div>
+        <div class="kpi-block kpi-info"><small>Preço Mínimo/hora</small><strong id="kpi-ponto-eq">—</strong>
+        </div>
+      </div>
+
+      <div id="kpi-alertas" style="margin-bottom: 20px;"></div>
+
+      <div class="grid-2" style="margin-bottom: 24px;">
+        <div class="card">
+          <h2>⏱️ Análise de Horas</h2>
+          <div class="grid-2" style="gap: 14px;">
+            <div class="metric"><small>Fonte das Horas</small><strong id="kpi-fonte-horas">—</strong></div>
+            <div class="metric"><small>Horas Base</small><strong id="kpi-horas-base">—</strong></div>
+            <div class="metric"><small>Fator de Esforço</small><strong id="kpi-fator-esforco">—</strong></div>
+            <div class="metric metric-accent"><small>Horas Finais</small><strong
+                id="kpi-horas-finais">—</strong></div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>💵 Candidatos de Preço</h2>
+          <div class="grid-2" style="gap: 14px;">
+            <div class="metric"><small>Ref. Comercial</small><strong id="kpi-ref-comercial">—</strong></div>
+            <div class="metric"><small>Custo × 1.8</small><strong id="kpi-custo-min">—</strong></div>
+            <div class="metric"><small>Ticket Mínimo</small><strong id="kpi-ticket-min">—</strong></div>
+            <div class="metric"><small>Impostos (6%)</small><strong id="kpi-imposto">—</strong></div>
+          </div>
+          <div class="determinant-banner" style="margin-top: 14px; font-size: 13px;"
+            id="kpi-determinante-banner">
+            <span id="kpi-valor-liq">Valor líquido: R$ —</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-grid" style="margin-bottom: 24px;">
+        <div class="chart-card">
+          <h3>🍩 Composição de Custos</h3>
+          <div class="chart-container">
+            <canvas id="chart-custo-composicao" aria-label="Gráfico de composição de custos"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>📊 Candidatos de Preço</h3>
+          <div class="chart-container">
+            <canvas id="chart-candidatos" aria-label="Gráfico comparativo de candidatos de preço"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <h2>👥 Composição de Custo da Equipe</h2>
+        <div class="table-wrapper">
+          <table aria-label="Composição de custo da equipe no projeto">
+            <thead>
+              <tr>
+                <th>Colaborador</th>
+                <th>Cargo</th>
+                <th>Horas Informadas</th>
+                <th>Horas Ajustadas (fator)</th>
+                <th>Custo Real/h</th>
+                <th>Custo no Projeto</th>
+              </tr>
+            </thead>
+            <tbody id="result-team-body">
+              <tr>
+                <td colspan="6" class="table-empty">Calcule o projeto para ver os resultados.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 24px;">
+        <h2>👤 Precificação por Colaborador Individual</h2>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          Preço sugerido caso o projeto seja executado individualmente por cada colaborador, com a margem de
+          lucro configurada na etapa anterior.
+        </p>
+        <div class="table-wrapper">
+          <table aria-label="Precificação individual por colaborador">
+            <thead>
+              <tr>
+                <th>Colaborador</th>
+                <th>Cargo</th>
+                <th>Custo Real/h</th>
+                <th>Custo Total Interno</th>
+                <th>Preço Sugerido</th>
+              </tr>
+            </thead>
+            <tbody id="individual-pricing-body">
+              <tr>
+                <td colspan="5" class="table-empty">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="office-strip">
+        <div class="office-strip-item"><small>Custo Mensal</small><strong id="office-custo-mensal">—</strong>
+        </div>
+        <div class="office-strip-item"><small>Horas Prod./Mês</small><strong id="office-horas-prod">—</strong>
+        </div>
+        <div class="office-strip-item"><small>Rateio/h</small><strong id="office-rateio-hora">—</strong></div>
+        <div class="office-strip-item"><small>Custos Indiretos</small><strong id="office-custos-ind">—</strong>
+        </div>
+        <div class="office-strip-item"><small>Meta Mensal</small><strong id="office-meta-mensal">—</strong>
+        </div>
+        <div class="office-strip-item"><small>Meta Semanal</small><strong id="office-meta-semanal">—</strong>
+        </div>
+        <div class="office-strip-item"><small>Meta Diária</small><strong id="office-meta-diaria">—</strong>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 24px;">
+        <h2>📐 Base de Disciplinas</h2>
+        <div class="table-wrapper">
+          <table aria-label="Base de referência de disciplinas">
+            <thead>
+              <tr>
+                <th>Disciplina</th>
+                <th>Área Ref.</th>
+                <th>Horas Ref.</th>
+                <th>Horas/m²</th>
+                <th>Valor Base</th>
+                <th>Ticket Mínimo</th>
+              </tr>
+            </thead>
+            <tbody id="disciplines-table-body">
+              <tr>
+                <td colspan="6" class="table-empty">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
 
     // Main KPIs
     document.getElementById('kpi-valor-final').textContent  = moeda(result.valorFinal);
@@ -572,9 +830,9 @@ App.UI = (function () {
     document.getElementById('office-custos-ind').textContent     = moeda(result.totalCustosIndiretos);
   }
 
-  // ── Step 4.5: Fechamento Comercial (Ajuste Fino) ───────────────────────────
-  function renderStep4Comercial(state, result) {
-    const el = document.getElementById('step4-comercial-content');
+  // ── Step 7: Fechamento Comercial (Ajuste Fino) ─────────────────────────────
+  function renderStep7(state, result) {
+    const el = document.getElementById('step7-content');
     if (!el || !result) return;
     
     const p = state.project;
@@ -668,7 +926,7 @@ App.UI = (function () {
   }
 
   // ── Step 5: Report ─────────────────────────────────────────────────────────
-  function renderStep5(state, result) {
+  function renderOldStep5(state, result) {
     const el = document.getElementById('step5-summary');
     if (!el || !result) return;
 
@@ -787,10 +1045,68 @@ App.UI = (function () {
     if (hint) hint.remove();
   }
 
+  // ── Step 8: Relatório ──────────────────────────────────────────────────────
+  function renderStep8(state, result) {
+    const el = document.getElementById('step8-content');
+    if (!el || !result) return;
+    
+    el.innerHTML = `
+      <div class="report-header" style="text-align: center; margin-bottom: 2rem;">
+        <h2>Relatório de Orçamento</h2>
+        <p style="color: var(--text-muted);">Projeto: <strong>${state.project.nome || 'Não informado'}</strong> | Cliente: <strong>${state.project.cliente || 'Não informado'}</strong></p>
+        <p style="color: var(--text-muted);">Data: <strong>${state.project.data ? new Date(state.project.data).toLocaleDateString() : new Date().toLocaleDateString()}</strong></p>
+      </div>
+
+      <div class="kpi-grid" style="margin-bottom: 2rem;">
+        <div class="kpi-block kpi-final kpi-success" style="grid-column: 1 / -1;">
+          <span class="kpi-label" style="font-size: 1.2rem;">Valor Final Fechado</span>
+          <strong class="kpi-value" style="font-size: 2.5rem;">${moeda(result.valorFinal)}</strong>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Indicadores Chave</h3>
+          <ul style="list-style: none; padding: 0; line-height: 2;">
+            <li>Custo Interno Total: <strong>${moeda(result.custoInternoTotal)}</strong></li>
+            <li>Margem Líquida Real: <strong>${pct(result.margemReal)}</strong></li>
+            <li>Lucro Líquido Projetado: <strong>${moeda(result.lucroLiquido)}</strong></li>
+            <li>Horas Totais: <strong>${horas(result.horasFinais)}</strong></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Resumo da Equipe</h3>
+          <ul style="list-style: none; padding: 0; line-height: 2;">
+            ${result.detalhesEquipe.length > 0 ? 
+              result.detalhesEquipe.map(d => `<li>${d.nome}: <strong>${horas(d.horas)}</strong> (${moeda(d.custoTotal)})</li>`).join('') :
+              '<li>Custo médio do escritório utilizado (sem equipe informada)</li>'
+            }
+          </ul>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
+         <button class="btn btn-primary" onclick="window.print()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Imprimir PDF
+         </button>
+         <button class="btn btn-secondary" id="btn-save-history-step8">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Salvar Projeto na Nuvem
+         </button>
+      </div>
+    `;
+
+    // Bind event for saving project in Step 8
+    document.getElementById('btn-save-history-step8')?.addEventListener('click', () => {
+      document.getElementById('btn-save-history')?.click();
+    });
+  }
+
   return {
     moeda, pct, horas, num, unmask, initMasks,
     updateStepper,
-    renderStep1, renderStep2, renderStep3, renderStep4, renderStep4Comercial, renderStep5,
+    renderStep1, renderStep2, renderStep3, renderStep4, renderStep5, renderStep6, renderStep7, renderStep8,
     renderColaboradoresTable,
     renderHistory,
     openCollaboratorModal, closeCollaboratorModal,

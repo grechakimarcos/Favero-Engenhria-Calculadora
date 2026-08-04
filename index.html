@@ -12,8 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/main.css" />
-  <link rel="stylesheet" href="css/users-dashboard.css" />
-  <link rel="stylesheet" href="css/users-modal.css" />
+  <!-- users-dashboard.css e users-modal.css são importados via main.css -->
 
   <!-- Supabase JS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -123,9 +122,6 @@
           </div>
 
           <div class="login-options">
-            <label class="remember-me">
-              <input type="checkbox" id="login-remember" />
-            </label>
             <a href="#" id="link-forgot-password" class="forgot-pwd-link">Esqueci minha senha</a>
           </div>
 
@@ -324,13 +320,12 @@
                 </svg>
               </div>
               <div>
-                <h1 class="calc-header-title">Calculadora de Honorários</h1>
+                <h2 class="calc-header-title">Calculadora de Honorários</h2>
                 <p class="calc-header-sub">Configure o projeto para gerar automaticamente o orçamento técnico.</p>
               </div>
             </div>
             <div class="calc-header-actions">
-              <button id="btn-new-project" class="calc-action-btn"
-                onclick="App.Store.resetProject(); App.Main?.goToStep(0);" title="Novo Projeto">
+              <button id="btn-new-project-header" class="calc-action-btn" title="Novo Projeto">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="12" y1="5" x2="12" y2="19" />
                   <line x1="5" y1="12" x2="19" y2="12" />
@@ -355,16 +350,10 @@
                 <div class="calc-step-connector calc-step-connector-left"></div>
                 <div class="calc-step-dot">
                   <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                    </svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                   </div>
                   <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
                   </div>
                 </div>
                 <div class="calc-step-info">
@@ -378,18 +367,10 @@
                 <div class="calc-step-connector calc-step-connector-left"></div>
                 <div class="calc-step-dot">
                   <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                   </div>
                   <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
                   </div>
                 </div>
                 <div class="calc-step-info">
@@ -403,21 +384,15 @@
                 <div class="calc-step-connector calc-step-connector-left"></div>
                 <div class="calc-step-dot">
                   <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <line x1="12" y1="1" x2="12" y2="23" />
-                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                    </svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   </div>
                   <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
                   </div>
                 </div>
                 <div class="calc-step-info">
                   <span class="calc-step-num">Etapa 3</span>
-                  <span class="calc-step-name">Custos</span>
+                  <span class="calc-step-name">Estimativa</span>
                 </div>
                 <div class="calc-step-connector calc-step-connector-right"></div>
               </div>
@@ -426,22 +401,15 @@
                 <div class="calc-step-connector calc-step-connector-left"></div>
                 <div class="calc-step-dot">
                   <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <line x1="18" y1="20" x2="18" y2="10" />
-                      <line x1="12" y1="20" x2="12" y2="4" />
-                      <line x1="6" y1="20" x2="6" y2="14" />
-                    </svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                   </div>
                   <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
                   </div>
                 </div>
                 <div class="calc-step-info">
                   <span class="calc-step-num">Etapa 4</span>
-                  <span class="calc-step-name">Resultado</span>
+                  <span class="calc-step-name">Complexidade</span>
                 </div>
                 <div class="calc-step-connector calc-step-connector-right"></div>
               </div>
@@ -450,21 +418,15 @@
                 <div class="calc-step-connector calc-step-connector-left"></div>
                 <div class="calc-step-dot">
                   <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                      <polyline points="22 4 12 14.01 9 11.01" />
-                    </svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                   </div>
                   <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
                   </div>
                 </div>
                 <div class="calc-step-info">
                   <span class="calc-step-num">Etapa 5</span>
-                  <span class="calc-step-name">Fechamento</span>
+                  <span class="calc-step-name">Custos</span>
                 </div>
                 <div class="calc-step-connector calc-step-connector-right"></div>
               </div>
@@ -473,23 +435,48 @@
                 <div class="calc-step-connector calc-step-connector-left"></div>
                 <div class="calc-step-dot">
                   <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                      <line x1="16" y1="13" x2="8" y2="13" />
-                      <line x1="16" y1="17" x2="8" y2="17" />
-                      <polyline points="10 9 9 9 8 9" />
-                    </svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                   </div>
                   <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
                   </div>
                 </div>
                 <div class="calc-step-info">
                   <span class="calc-step-num">Etapa 6</span>
+                  <span class="calc-step-name">Preço</span>
+                </div>
+                <div class="calc-step-connector calc-step-connector-right"></div>
+              </div>
+
+              <div class="calc-step" role="tab" aria-selected="false" aria-controls="panel-6" data-step="6">
+                <div class="calc-step-connector calc-step-connector-left"></div>
+                <div class="calc-step-dot">
+                  <div class="calc-step-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  </div>
+                  <div class="calc-step-check">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
+                  </div>
+                </div>
+                <div class="calc-step-info">
+                  <span class="calc-step-num">Etapa 7</span>
+                  <span class="calc-step-name">Negociação</span>
+                </div>
+                <div class="calc-step-connector calc-step-connector-right"></div>
+              </div>
+
+              <div class="calc-step" role="tab" aria-selected="false" aria-controls="panel-7" data-step="7">
+                <div class="calc-step-connector calc-step-connector-left"></div>
+                <div class="calc-step-dot">
+                  <div class="calc-step-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                  </div>
+                  <div class="calc-step-check">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
+                  </div>
+                </div>
+                <div class="calc-step-info">
+                  <span class="calc-step-num">Etapa 8</span>
                   <span class="calc-step-name">Relatório</span>
                 </div>
                 <div class="calc-step-connector calc-step-connector-right"></div>
@@ -499,7 +486,7 @@
 
             <!-- Step counter badge -->
             <div class="calc-wizard-counter" id="wizard-counter">
-              <span>Etapa <strong id="wizard-step-current">1</strong> de 6</span>
+              <span>Etapa <strong id="wizard-step-current">1</strong> de 8</span>
               <span class="calc-wizard-pct" id="wizard-pct">0% concluído</span>
             </div>
 
@@ -508,502 +495,105 @@
           <!-- ── Step Panels ───────────────────────────────────────── -->
           <div class="step-panels-container">
 
-            <!-- STEP 1 — DADOS DO PROJETO -->
+            <!-- STEP 1 — PROJETO -->
             <section class="step-panel active" id="panel-0" role="tabpanel" aria-labelledby="step-tab-0">
-              <div class="calc-panel-header">
-                <div class="calc-panel-icon calc-icon-blue">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 class="calc-panel-title">Dados do Projeto</h2>
-                  <p class="calc-panel-sub">Defina as características técnicas e comerciais do projeto</p>
-                </div>
-              </div>
-
-              <div class="card">
-                <h2>Informações Gerais</h2>
-                <div id="step1-content">
-                  <!-- Rendered dynamically by UI.renderStep1() -->
-                </div>
-              </div>
-
+              <div id="step1-content"></div>
               <div class="step-nav">
                 <div class="step-nav-left"></div>
                 <div class="step-nav-right">
-                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="1">
-                    Equipe
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </button>
+                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="1">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
                 </div>
               </div>
             </section>
 
-            <!-- STEP 2 — EQUIPE DO PROJETO -->
+            <!-- STEP 2 — EQUIPE -->
             <section class="step-panel" id="panel-1" role="tabpanel" aria-labelledby="step-tab-1">
-              <div class="calc-panel-header">
-                <div class="calc-panel-icon calc-icon-purple">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 class="calc-panel-title">Equipe do Projeto</h2>
-                  <p class="calc-panel-sub">Informe as horas de cada colaborador neste projeto</p>
-                </div>
-                <button id="add-team-member-btn" class="btn btn-secondary btn-sm" style="margin-left: auto;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    style="margin-right: 4px; vertical-align: text-bottom;">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  Adicionar Colaborador
-                </button>
-              </div>
-
-              <!-- Hours Preview -->
-              <div id="step2-hours-preview" class="card card-accent" style="margin-bottom: 24px;"></div>
-
-              <!-- Team Allocation -->
-              <div class="card" style="margin-bottom: 24px;">
-                <h2>📌 Alocação no Projeto
-                  <span class="badge badge-primary" id="team-count-badge">0 membros</span>
-                </h2>
-                <div class="hint" style="margin-bottom: 16px; font-size: 13px; color: var(--text-muted);">
-                  💡 As horas da equipe têm <strong>prioridade máxima</strong> sobre área e horas manuais. Se
-                  informadas, ditarão o tempo total do projeto.
-                </div>
-                <div id="step2-team-list"></div>
-              </div>
-
-              <!-- Collaborator Master Data -->
-              <div class="card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
-                  <h2 style="margin-bottom:0; border:none; padding:0;">🧑‍💼 Cadastro de Colaboradores</h2>
-                  <button id="add-collaborator-btn" class="btn btn-secondary btn-sm">+ Novo Colaborador</button>
-                </div>
-                <div class="table-wrapper">
-                  <table aria-label="Colaboradores cadastrados">
-                    <thead>
-                      <tr>
-                        <th>Nome</th>
-                        <th>Cargo</th>
-                        <th>Custo Mensal</th>
-                        <th>Horas/Mês</th>
-                        <th>Produtividade</th>
-                        <th>Custo Direto/h</th>
-                        <th>Rateio/h</th>
-                        <th>Custo Real/h</th>
-                        <th>Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody id="colabs-table-body">
-                      <tr>
-                        <td colspan="9" class="table-empty">Carregando...</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
+              <div id="step2-content"></div>
               <div class="step-nav">
                 <div class="step-nav-left">
-                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="0">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <line x1="19" y1="12" x2="5" y2="12" />
-                      <polyline points="12 19 5 12 12 5" />
-                    </svg>
-                    Projeto
-                  </button>
+                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
                 </div>
                 <div class="step-nav-right">
-                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="2">
-                    Custos
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </button>
+                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="2">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
                 </div>
               </div>
             </section>
 
-            <!-- STEP 3 — CUSTOS DO PROJETO -->
+            <!-- STEP 3 — ESTIMATIVA -->
             <section class="step-panel" id="panel-2" role="tabpanel" aria-labelledby="step-tab-2">
-              <div class="calc-panel-header">
-                <div class="calc-panel-icon calc-icon-green">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="1" x2="12" y2="23" />
-                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 class="calc-panel-title">Custos e Margens</h2>
-                  <p class="calc-panel-sub">Despesas diretas, custos indiretos e margem de lucro desejada</p>
-                </div>
-              </div>
-
-              <div class="grid-2" style="margin-bottom: 24px;">
-                <div class="card">
-                  <h2>📎 Despesas Diretas do Projeto</h2>
-                  <div id="step3-content"></div>
-                </div>
-                <div class="card card-accent">
-                  <h2>🏢 Resumo do Escritório</h2>
-                  <div class="grid-2" style="gap: 14px;">
-                    <div class="metric"><small>Custo Mensal Total</small><strong id="office-custo-mensal-s3">—</strong>
-                    </div>
-                    <div class="metric"><small>Horas Produtivas/Mês</small><strong id="office-horas-prod-s3">—</strong>
-                    </div>
-                    <div class="metric"><small>Rateio Indireto/h</small><strong id="office-rateio-s3">—</strong></div>
-                    <div class="metric metric-accent"><small>Meta Mensal</small><strong id="office-meta-s3">—</strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
+              <div id="step3-content"></div>
               <div class="step-nav">
                 <div class="step-nav-left">
-                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="1">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <line x1="19" y1="12" x2="5" y2="12" />
-                      <polyline points="12 19 5 12 12 5" />
-                    </svg>
-                    Equipe
-                  </button>
+                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
                 </div>
                 <div class="step-nav-right">
-                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="3">
-                    Resultado
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </button>
+                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="3">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
                 </div>
               </div>
             </section>
 
-            <!-- STEP 4 — RESULTADO / DASHBOARD -->
+            <!-- STEP 4 — COMPLEXIDADE -->
             <section class="step-panel" id="panel-3" role="tabpanel" aria-labelledby="step-tab-3">
-              <div class="calc-panel-header">
-                <div class="calc-panel-icon calc-icon-yellow">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="20" x2="18" y2="10" />
-                    <line x1="12" y1="20" x2="12" y2="4" />
-                    <line x1="6" y1="20" x2="6" y2="14" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 class="calc-panel-title">Dashboard de Resultado</h2>
-                  <p class="calc-panel-sub">Indicadores financeiros completos do projeto</p>
-                </div>
-              </div>
-
-              <!-- Main KPIs -->
-              <div class="kpi-grid" style="margin-bottom: 24px;">
-                <div class="kpi-block kpi-final" id="kpi-block-final">
-                  <small>Preço Final Sugerido</small>
-                  <strong id="kpi-valor-final">R$ —</strong>
-                  <div class="kpi-sub" id="kpi-determinante">—</div>
-                </div>
-                <div class="kpi-block"><small>Custo Interno Total</small><strong id="kpi-custo-total">R$ —</strong>
-                </div>
-                <div class="kpi-block"><small>Lucro Bruto</small><strong id="kpi-lucro-bruto">R$ —</strong></div>
-                <div class="kpi-block"><small>Lucro Líquido</small><strong id="kpi-lucro-liq">R$ —</strong></div>
-                <div class="kpi-block kpi-success"><small>Margem Bruta</small><strong id="kpi-margem-bruta">—</strong>
-                </div>
-                <div class="kpi-block"><small>Mark-up</small><strong id="kpi-markup">—</strong></div>
-                <div class="kpi-block"><small>Rentabilidade</small><strong id="kpi-rentabilidade">—</strong></div>
-                <div class="kpi-block kpi-info"><small>Preço Mínimo/hora</small><strong id="kpi-ponto-eq">—</strong>
-                </div>
-              </div>
-
-              <div id="kpi-alertas" style="margin-bottom: 20px;"></div>
-
-              <div class="grid-2" style="margin-bottom: 24px;">
-                <div class="card">
-                  <h2>⏱️ Análise de Horas</h2>
-                  <div class="grid-2" style="gap: 14px;">
-                    <div class="metric"><small>Fonte das Horas</small><strong id="kpi-fonte-horas">—</strong></div>
-                    <div class="metric"><small>Horas Base</small><strong id="kpi-horas-base">—</strong></div>
-                    <div class="metric"><small>Fator de Esforço</small><strong id="kpi-fator-esforco">—</strong></div>
-                    <div class="metric metric-accent"><small>Horas Finais</small><strong
-                        id="kpi-horas-finais">—</strong></div>
-                  </div>
-                </div>
-                <div class="card">
-                  <h2>💵 Candidatos de Preço</h2>
-                  <div class="grid-2" style="gap: 14px;">
-                    <div class="metric"><small>Ref. Comercial</small><strong id="kpi-ref-comercial">—</strong></div>
-                    <div class="metric"><small>Custo × 1.8</small><strong id="kpi-custo-min">—</strong></div>
-                    <div class="metric"><small>Ticket Mínimo</small><strong id="kpi-ticket-min">—</strong></div>
-                    <div class="metric"><small>Impostos (6%)</small><strong id="kpi-imposto">—</strong></div>
-                  </div>
-                  <div class="determinant-banner" style="margin-top: 14px; font-size: 13px;"
-                    id="kpi-determinante-banner">
-                    <span id="kpi-valor-liq">Valor líquido: R$ —</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="charts-grid" style="margin-bottom: 24px;">
-                <div class="chart-card">
-                  <h3>🍩 Composição de Custos</h3>
-                  <div class="chart-container">
-                    <canvas id="chart-custo-composicao" aria-label="Gráfico de composição de custos"></canvas>
-                  </div>
-                </div>
-                <div class="chart-card">
-                  <h3>📊 Candidatos de Preço</h3>
-                  <div class="chart-container">
-                    <canvas id="chart-candidatos" aria-label="Gráfico comparativo de candidatos de preço"></canvas>
-                  </div>
-                </div>
-              </div>
-
-              <div class="card" style="margin-bottom: 24px;">
-                <h2>👥 Composição de Custo da Equipe</h2>
-                <div class="table-wrapper">
-                  <table aria-label="Composição de custo da equipe no projeto">
-                    <thead>
-                      <tr>
-                        <th>Colaborador</th>
-                        <th>Cargo</th>
-                        <th>Horas Informadas</th>
-                        <th>Horas Ajustadas (fator)</th>
-                        <th>Custo Real/h</th>
-                        <th>Custo no Projeto</th>
-                      </tr>
-                    </thead>
-                    <tbody id="result-team-body">
-                      <tr>
-                        <td colspan="6" class="table-empty">Calcule o projeto para ver os resultados.</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div class="card" style="margin-bottom: 24px;">
-                <h2>👤 Precificação por Colaborador Individual</h2>
-                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-                  Preço sugerido caso o projeto seja executado individualmente por cada colaborador, com a margem de
-                  lucro configurada na etapa anterior.
-                </p>
-                <div class="table-wrapper">
-                  <table aria-label="Precificação individual por colaborador">
-                    <thead>
-                      <tr>
-                        <th>Colaborador</th>
-                        <th>Cargo</th>
-                        <th>Custo Real/h</th>
-                        <th>Custo Total Interno</th>
-                        <th>Preço Sugerido</th>
-                      </tr>
-                    </thead>
-                    <tbody id="individual-pricing-body">
-                      <tr>
-                        <td colspan="5" class="table-empty">—</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div class="office-strip">
-                <div class="office-strip-item"><small>Custo Mensal</small><strong id="office-custo-mensal">—</strong>
-                </div>
-                <div class="office-strip-item"><small>Horas Prod./Mês</small><strong id="office-horas-prod">—</strong>
-                </div>
-                <div class="office-strip-item"><small>Rateio/h</small><strong id="office-rateio-hora">—</strong></div>
-                <div class="office-strip-item"><small>Custos Indiretos</small><strong id="office-custos-ind">—</strong>
-                </div>
-                <div class="office-strip-item"><small>Meta Mensal</small><strong id="office-meta-mensal">—</strong>
-                </div>
-                <div class="office-strip-item"><small>Meta Semanal</small><strong id="office-meta-semanal">—</strong>
-                </div>
-                <div class="office-strip-item"><small>Meta Diária</small><strong id="office-meta-diaria">—</strong>
-                </div>
-              </div>
-
-              <div class="card" style="margin-top: 24px;">
-                <h2>📐 Base de Disciplinas</h2>
-                <div class="table-wrapper">
-                  <table aria-label="Base de referência de disciplinas">
-                    <thead>
-                      <tr>
-                        <th>Disciplina</th>
-                        <th>Área Ref.</th>
-                        <th>Horas Ref.</th>
-                        <th>Horas/m²</th>
-                        <th>Valor Base</th>
-                        <th>Ticket Mínimo</th>
-                      </tr>
-                    </thead>
-                    <tbody id="disciplines-table-body">
-                      <tr>
-                        <td colspan="6" class="table-empty">—</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
+              <div id="step4-content"></div>
               <div class="step-nav">
                 <div class="step-nav-left">
-                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="2">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <line x1="19" y1="12" x2="5" y2="12" />
-                      <polyline points="12 19 5 12 12 5" />
-                    </svg>
-                    Custos
-                  </button>
+                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
                 </div>
                 <div class="step-nav-right">
-                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="4">
-                    Fechamento
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </button>
+                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="4">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
                 </div>
               </div>
             </section>
 
-            <!-- STEP 5 — FECHAMENTO COMERCIAL -->
+            <!-- STEP 5 — CUSTOS -->
             <section class="step-panel" id="panel-4" role="tabpanel" aria-labelledby="step-tab-4">
-              <div class="calc-panel-header">
-                <div class="calc-panel-icon calc-icon-orange">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                    <polyline points="22 4 12 14.01 9 11.01" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 class="calc-panel-title">Fechamento Comercial</h2>
-                  <p class="calc-panel-sub">Ajuste os fatores de risco, arredonde valores e dê descontos preservando seu
-                    lucro.</p>
-                </div>
-              </div>
-
-              <div id="step4-comercial-content"></div>
-
+              <div id="step5-content"></div>
               <div class="step-nav">
                 <div class="step-nav-left">
-                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="3">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <line x1="19" y1="12" x2="5" y2="12" />
-                      <polyline points="12 19 5 12 12 5" />
-                    </svg>
-                    Resultado
-                  </button>
+                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="3"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
                 </div>
                 <div class="step-nav-right">
-                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="5">
-                    Relatório
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </button>
+                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="5">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
                 </div>
               </div>
             </section>
 
-            <!-- STEP 6 — RELATÓRIO E EXPORTAÇÃO -->
+            <!-- STEP 6 — PREÇO -->
             <section class="step-panel" id="panel-5" role="tabpanel" aria-labelledby="step-tab-5">
-              <div class="calc-panel-header">
-                <div class="calc-panel-icon calc-icon-blue">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 class="calc-panel-title">Relatório e Exportação</h2>
-                  <p class="calc-panel-sub">Exporte o resultado em PDF ou Excel e salve no histórico</p>
-                </div>
-              </div>
-
-              <div id="step5-summary" style="margin-bottom: 28px;"></div>
-
-              <div class="card">
-                <h2>📥 Exportar Relatório</h2>
-                <div class="grid-3">
-                  <button id="btn-export-pdf" class="btn btn-danger btn-lg btn-full" aria-label="Exportar em PDF">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      style="margin-right: 6px; vertical-align: text-bottom;">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                    </svg>
-                    Exportar PDF
-                  </button>
-                  <button id="btn-export-excel" class="btn btn-success btn-lg btn-full" aria-label="Exportar em Excel">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      style="margin-right: 6px; vertical-align: text-bottom;">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <line x1="3" y1="9" x2="21" y2="9" />
-                      <line x1="3" y1="15" x2="21" y2="15" />
-                      <line x1="9" y1="3" x2="9" y2="21" />
-                      <line x1="15" y1="3" x2="15" y2="21" />
-                    </svg>
-                    Exportar Excel
-                  </button>
-                  <button id="btn-save-history" class="btn btn-primary btn-lg btn-full"
-                    aria-label="Salvar no histórico">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      style="margin-right: 6px; vertical-align: text-bottom;">
-                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                      <polyline points="17 21 17 13 7 13 7 21" />
-                      <polyline points="7 3 7 8 15 8" />
-                    </svg>
-                    Salvar no Histórico
-                  </button>
-                </div>
-                <p style="font-size: 12px; color: var(--text-muted); margin-top: 16px;">
-                  ⚠️ Os arquivos PDF e Excel serão baixados diretamente. O histórico é salvo na nuvem e mantido automaticamente por 90 dias.
-                </p>
-              </div>
-
+              <div id="step6-content"></div>
               <div class="step-nav">
                 <div class="step-nav-left">
-                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="4">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <line x1="19" y1="12" x2="5" y2="12" />
-                      <polyline points="12 19 5 12 12 5" />
-                    </svg>
-                    Fechamento Comercial
-                  </button>
+                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="4"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
                 </div>
                 <div class="step-nav-right">
-                  <button id="btn-new-project-2" class="btn btn-ghost calc-nav-btn"
-                    onclick="App.Store.resetProject(); App.Main?.goToStep(0);">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
+                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="6">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+                </div>
+              </div>
+            </section>
+
+            <!-- STEP 7 — NEGOCIAÇÃO -->
+            <section class="step-panel" id="panel-6" role="tabpanel" aria-labelledby="step-tab-6">
+              <div id="step7-content"></div>
+              <div class="step-nav">
+                <div class="step-nav-left">
+                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="5"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
+                </div>
+                <div class="step-nav-right">
+                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="7">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+                </div>
+              </div>
+            </section>
+
+            <!-- STEP 8 — RELATÓRIO -->
+            <section class="step-panel" id="panel-7" role="tabpanel" aria-labelledby="step-tab-7">
+              <div id="step8-content"></div>
+              <div class="step-nav">
+                <div class="step-nav-left">
+                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="6"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
+                </div>
+                <div class="step-nav-right">
+                  <button id="btn-new-project-2" class="btn btn-ghost calc-nav-btn" onclick="App.Store.resetProject(); App.Main?.goToStep(0);">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     Novo Projeto
                   </button>
                 </div>
@@ -1722,22 +1312,35 @@
   <!-- ══════════════════════════════════════════════════════
      MODULES (load order matters)
 ══════════════════════════════════════════════════════ -->
-  <script src="js/core/config.js"></script>
-  <script src="js/core/store.js"></script>
-  <script src="js/core/calculator.js"></script>
-  <script src="js/core/charts.js"></script>
-  <script src="js/core/reports.js"></script>
-  <script src="js/utils/ui.js"></script>
-  <script src="js/services/supabase.js"></script>
-  <script src="js/services/auth.js"></script>
-  <script src="js/views/settings-ui.js"></script>
-  <script src="js/views/users-ui.js"></script>
-  <script src="js/router.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/core/config.js?v=5"></script>
+  <script src="js/core/store.js?v=5"></script>
+  <script src="js/core/calculator.js?v=5"></script>
+  <script src="js/core/charts.js?v=5"></script>
+  <script src="js/core/reports.js?v=5"></script>
+  <script src="js/utils/formatters.js?v=5"></script>
+  <script src="js/utils/ui.js?v=5"></script>
+  <script src="js/services/supabase.js?v=5"></script>
+  <script src="js/services/auth.js?v=5"></script>
+  <script src="js/views/settings-ui.js?v=5"></script>
+  <script src="js/views/users-ui.js?v=5"></script>
+  <script src="js/router.js?v=5"></script>
+  <script src="js/main.js?v=5"></script>
 
   <!-- Utility scripts: office summary + keyboard detection -->
   <script>
     document.addEventListener('DOMContentLoaded', function () {
+
+      // ── Novo Projeto (header) — bind aqui pois o onclick inline foi removido ──────
+      const btnNewHeader = document.getElementById('btn-new-project-header');
+      if (btnNewHeader) {
+        btnNewHeader.addEventListener('click', function () {
+          if (confirm('Iniciar novo projeto? Os dados atuais não salvos serão perdidos.')) {
+            App.Store.resetProject();
+            if (App.Main && typeof App.Main.goToStep === 'function') App.Main.goToStep(0);
+            App.UI.toast('Novo projeto iniciado.');
+          }
+        });
+      }
 
       // ── Live update step3 office summary ──────────────────────────────────
       App.Store.subscribe(function (state) {

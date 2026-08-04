@@ -30,16 +30,12 @@ App.Main = (function () {
 
     const step = state.currentStep;
     if (step === 1) UI.renderStep2(state, _lastResult);
-    if (step === 3) {
-      UI.renderStep4(_lastResult, state);
-      // Render charts with slight delay so DOM is painted
-      requestAnimationFrame(() => {
-        Charts.renderCustoComposicao('chart-custo-composicao', _lastResult);
-        Charts.renderCandidatosPreco('chart-candidatos', _lastResult);
-      });
-    }
-    if (step === 4) UI.renderStep4Comercial(state, _lastResult);
-    if (step === 5) UI.renderStep5(state, _lastResult);
+    if (step === 2) UI.renderStep3(state, _lastResult);
+    if (step === 3) UI.renderStep4(state, _lastResult);
+    if (step === 4) UI.renderStep5(state, _lastResult);
+    if (step === 5) UI.renderStep6(state, _lastResult);
+    if (step === 6) UI.renderStep7(state, _lastResult);
+    if (step === 7) UI.renderStep8(state, _lastResult);
   }
 
   // ── Step Navigation ────────────────────────────────────────────────────────
@@ -64,22 +60,26 @@ App.Main = (function () {
 
     if (step === 0) UI.renderStep1(state);
     if (step === 1) { _lastResult = Calc.calcularResultado(state); UI.renderStep2(state, _lastResult); }
-    if (step === 2) UI.renderStep3(state);
-    if (step === 3) {
+    if (step === 2) { _lastResult = Calc.calcularResultado(state); UI.renderStep3(state, _lastResult); }
+    if (step === 3) { _lastResult = Calc.calcularResultado(state); UI.renderStep4(state, _lastResult); }
+    if (step === 4) { _lastResult = Calc.calcularResultado(state); UI.renderStep5(state, _lastResult); }
+    if (step === 5) {
       _lastResult = Calc.calcularResultado(state);
-      UI.renderStep4(_lastResult, state);
+      UI.renderStep6(state, _lastResult);
       requestAnimationFrame(() => {
-        Charts.renderCustoComposicao('chart-custo-composicao', _lastResult);
         Charts.renderCandidatosPreco('chart-candidatos', _lastResult);
       });
     }
-    if (step === 4) {
+    if (step === 6) {
       _lastResult = Calc.calcularResultado(state);
-      UI.renderStep4Comercial(state, _lastResult);
+      UI.renderStep7(state, _lastResult);
     }
-    if (step === 5) {
+    if (step === 7) {
       _lastResult = Calc.calcularResultado(state);
-      UI.renderStep5(state, _lastResult);
+      UI.renderStep8(state, _lastResult);
+      requestAnimationFrame(() => {
+        Charts.renderCustoComposicao('chart-custo-composicao', _lastResult);
+      });
     }
   }
 
@@ -265,13 +265,57 @@ App.Main = (function () {
     });
   }
 
-  // ── Event Delegation — Step 3 (Costs) ─────────────────────────────────────
+  // ── Event Delegation — Step 3 (Estimativa) ─────────────────────────────────────
   function _bindStep3Events() {
     const panel = document.getElementById('panel-2');
     if (!panel) return;
+    panel.addEventListener('input', e => {
+      if (e.target.matches('#proj-area, #proj-horas-manuais')) {
+        Store.setState(s => ({
+          project: {
+            ...s.project,
+            area: App.UI.unmask(document.getElementById('proj-area')?.value),
+            horasManuais: App.UI.unmask(document.getElementById('proj-horas-manuais')?.value)
+          }
+        }));
+      }
+    });
+    panel.addEventListener('change', e => {
+      if (e.target.matches('#proj-disciplina')) {
+        Store.setState(s => ({
+          project: { ...s.project, disciplina: e.target.value }
+        }));
+        _renderCurrentStep();
+      }
+    });
+  }
+
+  // ── Event Delegation — Step 4 (Complexidade) ─────────────────────────────────────
+  function _bindStep4Events() {
+    const panel = document.getElementById('panel-3');
+    if (!panel) return;
+    panel.addEventListener('change', e => {
+      if (e.target.matches('#proj-complexidade')) {
+        Store.setState({ project: { ...Store.getState().project, complexidade: parseInt(e.target.value, 10) }});
+      }
+      if (e.target.matches('#proj-revisao')) {
+        Store.setState({ project: { ...Store.getState().project, revisao: parseInt(e.target.value, 10) }});
+      }
+      if (e.target.matches('#proj-aprovacao')) {
+        Store.setState({ project: { ...Store.getState().project, aprovacao: parseInt(e.target.value, 10) }});
+      }
+      _renderCurrentStep();
+    });
+  }
+
+  // ── Event Delegation — Step 5 (Custos) ─────────────────────────────────────
+  function _bindStep5Events() {
+    const panel = document.getElementById('panel-4');
+    if (!panel) return;
 
     panel.addEventListener('input', e => {
-      if (e.target.matches('#cost-art, #cost-outros, #cost-margem')) {
+      if (e.target.matches('#cost-art, #cost-outros, #cost-margem, #cost-imposto')) {
+        const impostoRaw = App.UI.unmask(document.getElementById('cost-imposto')?.value) || 0;
         Store.setState({
           costs: {
             ...Store.getState().costs,
@@ -279,6 +323,10 @@ App.Main = (function () {
             outros:     App.UI.unmask(document.getElementById('cost-outros')?.value),
             margemLucro:App.UI.unmask(document.getElementById('cost-margem')?.value),
           },
+          settings: {
+            ...Store.getState().settings,
+            impostoSimples: impostoRaw / 100
+          }
         });
       }
       if (e.target.matches('.indirect-nome, .indirect-valor')) {
@@ -309,12 +357,14 @@ App.Main = (function () {
         Store.setState(s => ({
           indirectCosts: [...s.indirectCosts, { id: `ci_${Date.now()}`, nome: '', valor: 0 }],
         }));
-        UI.renderStep3(Store.getState());
+        _lastResult = Calc.calcularResultado(Store.getState());
+        UI.renderStep5(Store.getState(), _lastResult);
       }
       if (e.target.closest('.indirect-remove-btn')) {
         const idx = parseInt(e.target.closest('.indirect-remove-btn').dataset.idx);
         Store.setState(s => ({ indirectCosts: s.indirectCosts.filter((_, i) => i !== idx) }));
-        UI.renderStep3(Store.getState());
+        _lastResult = Calc.calcularResultado(Store.getState());
+        UI.renderStep5(Store.getState(), _lastResult);
       }
     });
   }
@@ -360,9 +410,9 @@ App.Main = (function () {
     });
   }
 
-  // ── Event Delegation — Step 4 (Comercial) ───────────────────────────────
-  function _bindStep4ComercialEvents() {
-    const panel = document.getElementById('panel-4');
+  // ── Event Delegation — Step 6 (Comercial/Preço) ───────────────────────────────
+  function _bindStep6Events() {
+    const panel = document.getElementById('panel-5');
     if (!panel) return;
     
     panel.addEventListener('input', e => {
@@ -380,7 +430,7 @@ App.Main = (function () {
           }
         }));
         _lastResult = Calc.calcularResultado(Store.getState());
-        UI.renderStep4Comercial(Store.getState(), _lastResult);
+        UI.renderStep6(Store.getState(), _lastResult);
       }
       
       // Real-time factor adjustments
@@ -393,7 +443,7 @@ App.Main = (function () {
           }
         }));
         _lastResult = Calc.calcularResultado(Store.getState());
-        UI.renderStep4Comercial(Store.getState(), _lastResult);
+        UI.renderStep6(Store.getState(), _lastResult);
       }
     });
 
@@ -416,7 +466,7 @@ App.Main = (function () {
         document.getElementById('comercial-urgencia').value = 0;
 
         _lastResult = Calc.calcularResultado(Store.getState());
-        UI.renderStep4Comercial(Store.getState(), _lastResult);
+        UI.renderStep6(Store.getState(), _lastResult);
       }
     });
   }
@@ -701,7 +751,10 @@ App.Main = (function () {
     _bindStep1Events();
     _bindStep2Events();
     _bindStep3Events();
-    _bindStep4ComercialEvents();
+    _bindStep4Events();
+    _bindStep5Events();
+    _bindStep6Events();
+    // _bindStep7Events() e _bindStep8Events() caso existam listeners futuros
     _bindModalEvents();
     _bindHistoryEvents();
     _bindExportEvents();
