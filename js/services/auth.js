@@ -9,6 +9,7 @@ window.App = window.App || {};
 App.Auth = (function () {
 
   let _onLoginSuccess = null; // callback when login succeeds
+  let _accountReturnFocus = null;
 
   // ── Render Login Overlay ──────────────────────────────────────────────────────
   function _renderLoginOverlay() {
@@ -85,15 +86,31 @@ App.Auth = (function () {
       cloudData = await App.Supabase.loadAllFromCloud();
     } catch (err) {
       console.error('[Auth] Falha ao carregar dados da nuvem:', err);
-      App.UI.toast('Erro ao carregar dados. Verifique sua conexão e recarregue a página.', 'error');
-      // Continua com dados locais (do localStorage via Store)
+    }
+
+    // O perfil é a fonte de status e permissões. Sem ele, continuar com dados
+    // locais permitiria que uma conta inativa contornasse a validação.
+    if (!cloudData?.profile) {
+      App.UI.toast('Não foi possível validar sua conta. Verifique a conexão e tente novamente.', 'error');
+      await App.Supabase.signOut();
+      _renderLoginOverlay();
+      return;
     }
     
-    if (cloudData && cloudData.profile) {
+    if (cloudData.profile) {
       // 1. Verifica bloqueio temporário
       if (cloudData.profile.locked_until && new Date(cloudData.profile.locked_until) > new Date()) {
         const lockoutEnd = new Date(cloudData.profile.locked_until).toLocaleTimeString();
         App.UI.toast(`Conta bloqueada por segurança. Tente após ${lockoutEnd}`, 'error');
+        await App.Supabase.signOut();
+        _renderLoginOverlay();
+        return;
+      }
+
+      // Contas desativadas não podem manter uma sessão ativa, mesmo quando as
+      // credenciais do Supabase ainda forem válidas.
+      if (cloudData.profile.status === 'inativo') {
+        App.UI.toast('Esta conta está inativa. Fale com um administrador.', 'error');
         await App.Supabase.signOut();
         _renderLoginOverlay();
         return;
@@ -178,11 +195,10 @@ App.Auth = (function () {
     const role     = profile?.role || '';
 
     // Construir DOM de forma segura
-    const chip = document.createElement('div');
+    const chip = document.createElement('button');
     chip.className = 'user-chip';
     chip.id        = 'btn-account-menu';
-    chip.setAttribute('role', 'button');
-    chip.setAttribute('tabindex', '0');
+    chip.type       = 'button';
     chip.title     = 'Minha Conta';
 
     const avatarDiv = document.createElement('div');
@@ -218,10 +234,14 @@ App.Auth = (function () {
     const panel   = document.getElementById('account-panel');
     const overlay = document.getElementById('account-overlay');
     if (!panel || !overlay) return;
+    _accountReturnFocus = document.activeElement;
     panel.classList.add('open');
+    panel.setAttribute('aria-hidden', 'false');
+    panel.removeAttribute('inert');
     overlay.classList.add('visible');
     document.body.classList.add('settings-open'); // reusing this class to lock scroll
     _renderAccountContent();
+    requestAnimationFrame(() => document.getElementById('btn-account-close')?.focus());
   }
 
   function _closeAccountModal() {
@@ -229,113 +249,220 @@ App.Auth = (function () {
     const overlay = document.getElementById('account-overlay');
     if (!panel || !overlay) return;
     panel.classList.remove('open');
+    panel.setAttribute('aria-hidden', 'true');
+    panel.setAttribute('inert', '');
     overlay.classList.remove('visible');
     document.body.classList.remove('settings-open');
+    // Removes any password values from the DOM as soon as the drawer closes.
+    document.getElementById('account-panel-body')?.replaceChildren();
+    if (_accountReturnFocus && typeof _accountReturnFocus.focus === 'function') {
+      _accountReturnFocus.focus();
+    }
+    _accountReturnFocus = null;
+  }
+
+  function _trapAccountFocus(event) {
+    const panel = document.getElementById('account-panel');
+    if (event.key !== 'Tab' || !panel?.classList.contains('open')) return;
+    const focusable = Array.from(panel.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+    )).filter(element => element.offsetParent !== null);
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (!panel.contains(document.activeElement)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function _setAccountText(container, selector, value) {
+    const target = container.querySelector(selector);
+    if (target) target.textContent = value;
+  }
+
+  function _getInitials(name) {
+    const parts = String(name || 'U').trim().split(/\s+/).filter(Boolean);
+    if (parts.length > 1) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return (parts[0] || 'U').slice(0, 2).toUpperCase();
+  }
+
+  function _formatAccountDate(value) {
+    if (!value) return 'Não informado';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Não informado';
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  }
+
+  function _roleLabel(role) {
+    const labels = {
+      admin: 'Administrador',
+      engenheiro: 'Engenheiro',
+      financeiro: 'Financeiro',
+      comercial: 'Comercial',
+      gestor: 'Gestor',
+      visitante: 'Visitante',
+    };
+    return labels[String(role || '').toLowerCase()] || 'Não informado';
+  }
+
+  function _getAccountStatus(profile) {
+    if (profile.locked_until && new Date(profile.locked_until) > new Date()) {
+      return { key: 'blocked', label: 'Conta bloqueada' };
+    }
+    if (profile.status === 'inativo') return { key: 'inactive', label: 'Conta inativa' };
+    if (profile.must_change_password) return { key: 'pending', label: 'Troca de senha pendente' };
+    return { key: 'active', label: 'Conta ativa' };
+  }
+
+  function _accountInfoMarkup() {
+    return `
+      <div class="user-card-current">
+        <div class="user-card-avatar" id="account-avatar"></div>
+        <div class="user-card-info">
+          <span class="user-card-name" id="account-name"></span>
+          <span class="user-card-email" id="account-email"></span>
+          <span class="user-card-badge" id="account-status"></span>
+        </div>
+      </div>
+      <section class="account-section" aria-labelledby="account-info-title">
+        <div class="account-section-header">
+          <div>
+            <h3 id="account-info-title">Informações da conta</h3>
+            <p>Dados vinculados ao seu acesso no sistema.</p>
+          </div>
+        </div>
+        <dl class="account-info-grid">
+          <div class="account-info-item"><dt>Perfil de acesso</dt><dd id="account-role"></dd></div>
+          <div class="account-info-item"><dt>Empresa</dt><dd id="account-company"></dd></div>
+          <div class="account-info-item"><dt>Cargo / função</dt><dd id="account-job"></dd></div>
+          <div class="account-info-item"><dt>Telefone</dt><dd id="account-phone"></dd></div>
+          <div class="account-info-item account-info-item-wide"><dt>Conta criada em</dt><dd id="account-created"></dd></div>
+          <div class="account-info-item account-info-item-wide"><dt>Último acesso</dt><dd id="account-last-access"></dd></div>
+          <div class="account-info-item account-info-item-wide"><dt>Última alteração de senha</dt><dd id="account-password-updated"></dd></div>
+        </dl>
+      </section>
+      <div class="account-section-divider"><span>Segurança</span></div>`;
+  }
+
+  function _passwordToggleMarkup(id, label) {
+    return `<button type="button" class="btn-toggle-pwd" id="${id}" aria-label="${label}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+      </svg>
+    </button>`;
+  }
+
+  function _accountSecurityMarkup() {
+    return `
+      <section class="account-section account-security-section" aria-labelledby="account-security-title">
+        <div class="account-section-header">
+          <div>
+            <h3 id="account-security-title">Redefinir senha</h3>
+            <p>Confirme sua senha atual antes de criar uma nova.</p>
+          </div>
+        </div>
+        <form class="account-password-form" id="account-password-form" novalidate>
+          <div class="form-group">
+            <label for="account-current-password">Senha atual</label>
+            <div class="account-password-field">
+              <input type="password" id="account-current-password" placeholder="Digite sua senha atual" autocomplete="current-password" required />
+              ${_passwordToggleMarkup('toggle-account-current', 'Mostrar senha atual')}
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="account-new-password">Nova senha</label>
+            <div class="account-password-field">
+              <input type="password" id="account-new-password" placeholder="Crie uma senha segura" autocomplete="new-password" required minlength="8" maxlength="128" />
+              ${_passwordToggleMarkup('toggle-account-new', 'Mostrar nova senha')}
+            </div>
+            <div class="account-pwd-strength" aria-hidden="true"><div class="account-pwd-strength-fill" id="account-pwd-strength-fill"></div></div>
+            <span class="account-pwd-strength-label" id="account-pwd-strength-label"></span>
+            <span class="account-password-requirements">Use 8 ou mais caracteres, com maiúscula, minúscula, número e símbolo.</span>
+          </div>
+          <div class="form-group">
+            <label for="account-confirm-password">Confirmar nova senha</label>
+            <div class="account-password-field">
+              <input type="password" id="account-confirm-password" placeholder="Repita a nova senha" autocomplete="new-password" required maxlength="128" />
+              ${_passwordToggleMarkup('toggle-account-confirm', 'Mostrar confirmação da senha')}
+            </div>
+          </div>
+          <div id="account-password-feedback" class="account-password-feedback" role="status" aria-live="polite"></div>
+          <button id="btn-account-password" type="submit" class="btn btn-primary account-password-submit">Redefinir senha</button>
+        </form>
+      </section>`;
   }
 
   function _renderAccountContent() {
     const el = document.getElementById('account-panel-body');
     if (!el) return;
 
-    const userInfo = App.Supabase.getUserInfo();
+    const userInfo = App.Supabase.getUserInfo() || {};
+    const profile  = App.Supabase.getProfile() || {};
+    const name     = profile.nome_completo || userInfo.name || 'Usuário';
+    const status   = _getAccountStatus(profile);
 
-    el.innerHTML = `
-      <!-- Current user info -->
-      <div class="user-card-current">
-        <div class="user-card-avatar">${(userInfo?.name || 'U').slice(0,2).toUpperCase()}</div>
-        <div class="user-card-info">
-          <span class="user-card-name">${userInfo?.name || '—'}</span>
-          <span class="user-card-email">${userInfo?.email || '—'}</span>
-          <span class="user-card-badge">Conta ativa</span>
-        </div>
-      </div>
+    // Only static markup is inserted. Account values are assigned with
+    // textContent below so editable profile data can never become HTML.
+    el.innerHTML = _accountInfoMarkup() + _accountSecurityMarkup();
+    _setAccountText(el, '#account-avatar', _getInitials(name));
+    _setAccountText(el, '#account-name', name);
+    _setAccountText(el, '#account-email', userInfo.email || 'E-mail não informado');
+    _setAccountText(el, '#account-status', status.label);
+    el.querySelector('#account-status')?.setAttribute('data-status', status.key);
+    _setAccountText(el, '#account-role', _roleLabel(profile.role));
+    _setAccountText(el, '#account-company', profile.empresa || 'Não informado');
+    _setAccountText(el, '#account-job', profile.cargo || 'Não informado');
+    _setAccountText(el, '#account-phone', profile.telefone || 'Não informado');
+    _setAccountText(el, '#account-created', _formatAccountDate(userInfo.createdAt || profile.created_at));
+    _setAccountText(el, '#account-last-access', _formatAccountDate(profile.last_login_at || userInfo.lastSignInAt));
+    _setAccountText(el, '#account-password-updated', profile.password_changed_at
+      ? _formatAccountDate(profile.password_changed_at)
+      : 'Ainda não registrada');
 
-      <div class="user-create-divider">
-        <span>Convidar novo usuário</span>
-      </div>
-
-      <p class="settings-hint">
-        Crie um acesso para um novo membro da equipe. Eles poderão fazer login com
-        as credenciais abaixo e terão seus próprios dados isolados na nuvem.
-      </p>
-
-      <div class="user-create-form" id="form-create-user">
-        <div class="form-group">
-          <label for="new-user-name">Nome <span class="label-hint">— opcional</span></label>
-          <input type="text" id="new-user-name" placeholder="Ex: Adriel Silva" maxlength="60" />
-        </div>
-        <div class="form-group">
-          <label for="new-user-email">E-mail *</label>
-          <input type="email" id="new-user-email" placeholder="email@faveroeng.com.br" required />
-        </div>
-        <div class="form-group">
-          <label for="new-user-password">Senha *</label>
-          <div class="password-wrapper">
-            <input type="password" id="new-user-password" placeholder="Mínimo 8 caracteres" required minlength="8" />
-            <button type="button" class="btn-toggle-pwd" id="toggle-new-pwd" aria-label="Mostrar senha">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-          </div>
-          <div class="pwd-strength-bar" id="pwd-strength-bar">
-            <div class="pwd-strength-fill" id="pwd-strength-fill"></div>
-          </div>
-          <span class="pwd-strength-label" id="pwd-strength-label"></span>
-        </div>
-        <div class="form-group">
-          <label for="new-user-confirm">Confirmar Senha *</label>
-          <div class="password-wrapper">
-            <input type="password" id="new-user-confirm" placeholder="Repita a senha" required />
-            <button type="button" class="btn-toggle-pwd" id="toggle-confirm-pwd" aria-label="Mostrar senha">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <div id="create-user-feedback" class="create-user-feedback"></div>
-
-        <button id="btn-create-user" class="btn btn-primary" style="width:100%;justify-content:center">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          Criar Usuário
-        </button>
-
-        <p class="settings-hint" style="margin-top:.75rem;font-size:.74rem">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px; color: var(--warning);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-          Para acesso imediato sem e-mail de confirmação, desative
-          <strong>Email confirmations</strong> em Supabase Dashboard → Authentication → Email.
-        </p>
-      </div>`;
-
-    _bindUserFormEvents(el);
+    _bindAccountEvents(el);
   }
 
-  function _bindUserFormEvents(container) {
-    // Password strength meter
-    const pwdInput = container.querySelector('#new-user-password');
-    const fill     = container.querySelector('#pwd-strength-fill');
-    const label    = container.querySelector('#pwd-strength-label');
+  function _bindAccountEvents(container) {
+    const pwdInput = container.querySelector('#account-new-password');
+    const fill     = container.querySelector('#account-pwd-strength-fill');
+    const label    = container.querySelector('#account-pwd-strength-label');
 
     pwdInput?.addEventListener('input', () => {
-      const val = pwdInput.value;
-      const score = _pwdScore(val);
       const levels = [
-        { pct: 0,   color: '',            text: '' },
-        { pct: 25,  color: '#EF4444',     text: 'Muito fraca' },
-        { pct: 50,  color: '#F59E0B',     text: 'Fraca' },
-        { pct: 75,  color: '#3B82F6',     text: 'Boa' },
-        { pct: 100, color: '#10B981',     text: 'Forte' },
+        { pct: 0, color: '', text: '' },
+        { pct: 25, color: '#EF4444', text: 'Muito fraca' },
+        { pct: 50, color: '#F59E0B', text: 'Fraca' },
+        { pct: 75, color: '#3B82F6', text: 'Boa' },
+        { pct: 100, color: '#10B981', text: 'Forte' },
       ];
-      const lvl = levels[score];
-      if (fill)  { fill.style.width = lvl.pct + '%'; fill.style.background = lvl.color; }
-      if (label) { label.textContent = lvl.text; label.style.color = lvl.color; }
+      const level = levels[_pwdScore(pwdInput.value)];
+      if (fill) {
+        fill.style.width = level.pct + '%';
+        fill.style.background = level.color;
+      }
+      if (label) {
+        label.textContent = level.text;
+        label.style.color = level.color;
+      }
     });
 
-    // Toggle password visibility buttons
-    _bindToggle(container, '#toggle-new-pwd',     '#new-user-password');
-    _bindToggle(container, '#toggle-confirm-pwd', '#new-user-confirm');
-
-    // Create user button
-    container.querySelector('#btn-create-user')?.addEventListener('click', _handleCreateUser);
+    _bindToggle(container, '#toggle-account-current', '#account-current-password');
+    _bindToggle(container, '#toggle-account-new', '#account-new-password');
+    _bindToggle(container, '#toggle-account-confirm', '#account-confirm-password');
+    container.querySelector('#account-password-form')?.addEventListener('submit', _handleAccountPasswordChange);
   }
+
 
   function _bindToggle(container, btnSel, inputSel) {
     const btn   = container.querySelector(btnSel);
@@ -344,6 +471,10 @@ App.Auth = (function () {
     btn.addEventListener('click', () => {
       const isText = input.type === 'text';
       input.type = isText ? 'password' : 'text';
+      const baseLabel = (btn.getAttribute('aria-label') || 'senha')
+        .replace(/^Mostrar\s+/i, '')
+        .replace(/^Ocultar\s+/i, '');
+      btn.setAttribute('aria-label', `${isText ? 'Mostrar' : 'Ocultar'} ${baseLabel}`);
       btn.innerHTML = isText
         ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`
         : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
@@ -360,62 +491,115 @@ App.Auth = (function () {
     return Math.min(score, 4);
   }
 
-  function _setFeedback(msg, type) {
-    const el = document.getElementById('create-user-feedback');
-    if (!el) return;
-    el.textContent  = msg;
-    el.className    = `create-user-feedback ${type}`;
-    el.style.display = msg ? 'block' : 'none';
+  function _isStrongAccountPassword(password) {
+    return password.length >= 8
+      && /[A-Z]/.test(password)
+      && /[a-z]/.test(password)
+      && /\d/.test(password)
+      && /[^A-Za-z0-9]/.test(password);
   }
 
-  async function _handleCreateUser() {
-    const name    = document.getElementById('new-user-name')?.value.trim() || '';
-    const email   = document.getElementById('new-user-email')?.value.trim() || '';
-    const pwd     = document.getElementById('new-user-password')?.value || '';
-    const confirm = document.getElementById('new-user-confirm')?.value || '';
-    const btn     = document.getElementById('btn-create-user');
+  function _setAccountPasswordFeedback(message, type = '') {
+    const feedback = document.getElementById('account-password-feedback');
+    if (!feedback) return;
+    feedback.textContent = message;
+    feedback.className = `account-password-feedback${type ? ` ${type}` : ''}`;
+    feedback.style.display = message ? 'block' : 'none';
+  }
 
-    _setFeedback('', '');
+  function _passwordChangeErrorMessage(error, reason) {
+    const message = String(error?.message || '').toLowerCase();
+    if (reason === 'invalid_current_password' || message.includes('invalid login credentials')) {
+      return 'A senha atual está incorreta.';
+    }
+    if (message.includes('different from the old password') || message.includes('same password')) {
+      return 'A nova senha precisa ser diferente da senha atual.';
+    }
+    if (reason === 'rate_limited') {
+      return 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.';
+    }
+    if (reason === 'reauthentication_failed') {
+      return 'Não foi possível confirmar sua senha agora. Verifique a conexão e tente novamente.';
+    }
+    if (reason === 'account_mismatch') {
+      return 'Não foi possível confirmar a conta atual. Saia e entre novamente.';
+    }
+    if (reason === 'not_authenticated') {
+      return 'Sua sessão expirou. Entre novamente para alterar a senha.';
+    }
+    return 'Não foi possível redefinir a senha. Tente novamente.';
+  }
 
-    // Validation
-    if (!email) { _setFeedback('Preencha o e-mail.', 'error'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { _setFeedback('E-mail inválido.', 'error'); return; }
-    if (pwd.length < 8) { _setFeedback('A senha deve ter no mínimo 8 caracteres.', 'error'); return; }
-    if (pwd !== confirm) { _setFeedback('As senhas não coincidem.', 'error'); return; }
+  async function _handleAccountPasswordChange(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const currentPassword = form.querySelector('#account-current-password')?.value || '';
+    const newPassword     = form.querySelector('#account-new-password')?.value || '';
+    const confirmation    = form.querySelector('#account-confirm-password')?.value || '';
+    const button          = form.querySelector('#btn-account-password');
 
-    // Loading
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Criando usuário…';
-
-    const { user, error } = await App.Supabase.signUp(email, pwd, name || undefined);
-
-    btn.disabled = false;
-    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Criar Usuário';
-
-    if (error) {
-      const msg = error.message.includes('already registered')
-        ? 'Este e-mail já possui uma conta.'
-        : `Erro: ${error.message}`;
-      _setFeedback(msg, 'error');
+    _setAccountPasswordFeedback('');
+    if (!currentPassword) {
+      _setAccountPasswordFeedback('Digite sua senha atual.', 'error');
+      return;
+    }
+    if (!_isStrongAccountPassword(newPassword)) {
+      _setAccountPasswordFeedback('A nova senha não atende aos requisitos de segurança.', 'error');
+      return;
+    }
+    if (newPassword !== confirmation) {
+      _setAccountPasswordFeedback('A confirmação não corresponde à nova senha.', 'error');
+      return;
+    }
+    if (newPassword === currentPassword) {
+      _setAccountPasswordFeedback('A nova senha precisa ser diferente da senha atual.', 'error');
       return;
     }
 
-    if (user) {
-      _setFeedback(`Usuário "${email}" criado com sucesso! Ele já pode fazer login.`, 'success');
-      // Clear form
-      document.getElementById('new-user-name').value    = '';
-      document.getElementById('new-user-email').value   = '';
-      document.getElementById('new-user-password').value = '';
-      document.getElementById('new-user-confirm').value = '';
-      const fill  = document.getElementById('pwd-strength-fill');
-      const label = document.getElementById('pwd-strength-label');
-      if (fill)  fill.style.width = '0';
-      if (label) label.textContent = '';
-    } else {
-      // Supabase returns null user when email confirmation is required
-      _setFeedback(`Conta criada! Um e-mail de confirmação foi enviado para "${email}".`, 'info');
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner"></span> Redefinindo…';
+
+    try {
+      const { error, reason, profileError } = await App.Supabase.changePassword(currentPassword, newPassword);
+      if (error) {
+        const errorMessage = _passwordChangeErrorMessage(error, reason);
+        if (document.getElementById('account-panel')?.classList.contains('open')) {
+          _setAccountPasswordFeedback(errorMessage, 'error');
+        } else {
+          App.UI.toast(errorMessage, 'error');
+        }
+        return;
+      }
+
+      const accountPanelOpen = document.getElementById('account-panel')?.classList.contains('open');
+      if (accountPanelOpen) _renderAccountContent();
+      if (profileError) {
+        if (accountPanelOpen) {
+          _setAccountPasswordFeedback(
+            'Senha alterada, mas o histórico da conta não pôde ser atualizado. A nova senha já está valendo.',
+            'warning'
+          );
+        }
+        App.UI.toast('Senha alterada; houve uma falha ao atualizar o histórico.', 'warning');
+      } else {
+        if (accountPanelOpen) _setAccountPasswordFeedback('Senha redefinida com sucesso.', 'success');
+        App.UI.toast('Senha redefinida com sucesso!', 'success');
+      }
+      if (accountPanelOpen) document.getElementById('btn-account-close')?.focus();
+    } catch (error) {
+      console.error('[Auth] Falha inesperada ao redefinir senha:', error);
+      const message = 'Não foi possível redefinir a senha. Verifique sua conexão.';
+      if (document.getElementById('account-panel')?.classList.contains('open')) {
+        _setAccountPasswordFeedback(message, 'error');
+      } else {
+        App.UI.toast(message, 'error');
+      }
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Redefinir senha';
     }
   }
+
 
   // ── Handle Logout ─────────────────────────────────────────────────────────────
   async function _handleLogout() {
@@ -465,6 +649,7 @@ App.Auth = (function () {
       _handleLogout();
     });
     document.addEventListener('keydown', e => {
+      _trapAccountFocus(e);
       if (e.key === 'Escape' && document.getElementById('account-panel')?.classList.contains('open')) {
         _closeAccountModal();
       }
@@ -525,9 +710,10 @@ App.Auth = (function () {
         // Regex de senha forte
         const hasUpper = /[A-Z]/.test(pwd);
         const hasLower = /[a-z]/.test(pwd);
-        const hasNumSpec = /[\d\W]/.test(pwd);
+        const hasNumber = /\d/.test(pwd);
+        const hasSpecial = /[^A-Za-z0-9]/.test(pwd);
         
-        if (pwd.length < 8 || !hasUpper || !hasLower || !hasNumSpec) {
+        if (pwd.length < 8 || !hasUpper || !hasLower || !hasNumber || !hasSpecial) {
           err.textContent = 'A senha não atende aos requisitos mínimos de segurança.';
           return;
         }

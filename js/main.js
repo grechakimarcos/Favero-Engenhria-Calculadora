@@ -65,11 +65,16 @@ App.Main = (function () {
       });
     });
 
-    // Approvals extraction
-    let aprovacoes = 0;
-    if (document.getElementById('aprov-prefeitura')?.checked) aprovacoes += 1;
-    if (document.getElementById('aprov-bombeiros')?.checked) aprovacoes += 1;
-    if (document.getElementById('aprov-vigilancia')?.checked) aprovacoes += 1;
+    // Keep both the legacy count (used by the calculator) and the selected
+    // agency names (used by reports and when restoring the form).
+    const approvalOptions = [
+      { id: 'aprov-prefeitura', name: 'Prefeitura' },
+      { id: 'aprov-bombeiros', name: 'Bombeiros' },
+      { id: 'aprov-vigilancia', name: 'Vigilância Sanitária' },
+    ];
+    const aprovacoesSelecionadas = approvalOptions
+      .filter(option => document.getElementById(option.id)?.checked)
+      .map(option => option.name);
     
     // Extracted
     const complexidadeEl = document.querySelector('input[name="proj-complexidade"]:checked');
@@ -88,7 +93,8 @@ App.Main = (function () {
         complexidade: complexidadeEl ? Number(complexidadeEl.value) : 1,
         revisao: revisaoEl ? Number(revisaoEl.value) : 0,
         fatorUrgencia: urgenciaEl ? Number(urgenciaEl.value) : 0,
-        aprovacao: aprovacoes,
+        aprovacao: aprovacoesSelecionadas.length,
+        aprovacoesSelecionadas,
         ajusteComercial: {
           ...s.project.ajusteComercial,
           valorFechado: App.UI.unmask(document.getElementById('dash-preco-fechado')?.value) || null
@@ -265,13 +271,74 @@ App.Main = (function () {
   }
 
   // ── Export Events ──────────────────────────────────────────────────────────
+  async function _exportPdf(buttonId, reportMethod, loadingText, successText) {
+    if (!_lastResult) {
+      UI.toast('Calcule o projeto primeiro.', 'error');
+      return;
+    }
+
+    const button = document.getElementById(buttonId);
+    const exportFn = Reports?.[reportMethod];
+    if (!button || typeof exportFn !== 'function') {
+      UI.toast('Exportação indisponível. Recarregue a página e tente novamente.', 'error');
+      console.error(`[Reports] Método não disponível: ${reportMethod}`);
+      return;
+    }
+
+    const exportButtons = [
+      document.getElementById('btn-export-technical-pdf'),
+      document.getElementById('btn-export-client-pdf'),
+    ].filter(Boolean);
+    const previousDisabled = exportButtons.map(exportButton => exportButton.disabled);
+    const originalContent = button.innerHTML;
+    exportButtons.forEach(exportButton => { exportButton.disabled = true; });
+    button.setAttribute('aria-busy', 'true');
+    button.innerHTML = `<span class="spinner" aria-hidden="true"></span>${loadingText}`;
+
+    // Capture one consistent snapshot without recalculating the pricing engine.
+    const state = Store.getState();
+    const result = _lastResult;
+
+    try {
+      if (!window.jspdf?.jsPDF) {
+        throw new Error('Biblioteca jsPDF não carregada.');
+      }
+
+      const fileName = await exportFn(state, result);
+      if (typeof fileName !== 'string' || !fileName.trim()) {
+        throw new Error('O gerador não confirmou o arquivo exportado.');
+      }
+
+      UI.toast(successText, 'success');
+    } catch (error) {
+      console.error(`[Reports] Falha em ${reportMethod}:`, error);
+      UI.toast('Não foi possível gerar o PDF. Verifique sua conexão e tente novamente.', 'error');
+    } finally {
+      button.removeAttribute('aria-busy');
+      button.innerHTML = originalContent;
+      exportButtons.forEach((exportButton, index) => {
+        exportButton.disabled = previousDisabled[index];
+      });
+    }
+  }
+
   function _bindExportEvents() {
-    document.getElementById('btn-export-pdf')?.addEventListener('click', () => {
-      if (!_lastResult) { UI.toast('Calcule o projeto primeiro.', 'error'); return; }
-      try {
-        Reports.exportarPDF(Store.getState(), _lastResult);
-        UI.toast('PDF gerado com sucesso!');
-      } catch (e) { UI.toast('Erro ao gerar PDF. Verifique o console.', 'error'); console.error(e); }
+    document.getElementById('btn-export-technical-pdf')?.addEventListener('click', async () => {
+      await _exportPdf(
+        'btn-export-technical-pdf',
+        'exportarRelatorioTecnico',
+        'Gerando PDF técnico…',
+        'PDF técnico gerado com sucesso!'
+      );
+    });
+
+    document.getElementById('btn-export-client-pdf')?.addEventListener('click', async () => {
+      await _exportPdf(
+        'btn-export-client-pdf',
+        'exportarOrcamentoCliente',
+        'Gerando PDF para cliente…',
+        'PDF para cliente gerado com sucesso!'
+      );
     });
 
     document.getElementById('btn-export-excel')?.addEventListener('click', () => {
@@ -431,7 +498,7 @@ App.Main = (function () {
       renderDashboard();
     });
 
-    console.info('[Fávero ERP] Dashboard inicializado. v4.0.0 + Supabase Auth');
+    console.info('[Favero ERP] Dashboard inicializado. v4.0.0 + Supabase Auth');
   }
 
   return { init, renderDashboard, recalculateDashboard };

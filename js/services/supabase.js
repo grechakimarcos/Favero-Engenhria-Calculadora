@@ -15,6 +15,7 @@ App.Supabase = (function () {
   // ── Client ───────────────────────────────────────────────────────────────────
   let _client = null;
   let _currentUser = null;
+  let _currentProfile = null;
 
   function _getClient() {
     if (!_client) {
@@ -64,6 +65,7 @@ App.Supabase = (function () {
     }
     await client.auth.signOut();
     _currentUser = null;
+    _currentProfile = null;
   }
 
   /**
@@ -78,6 +80,8 @@ App.Supabase = (function () {
       _currentUser = data.session.user;
       return data.session.user;
     }
+    _currentUser = null;
+    _currentProfile = null;
     return null;
   }
 
@@ -116,19 +120,115 @@ App.Supabase = (function () {
     
     const { data, error } = await client.auth.updateUser({ password: newPassword });
     if (!error) {
+      _currentUser = data?.user || _currentUser;
+      const changedAt = new Date().toISOString();
       // Atualiza metadado em profiles
       await client.from('profiles').update({
         must_change_password: false,
-        password_changed_at: new Date().toISOString()
+        password_changed_at: changedAt
       }).eq('id', _currentUser.id);
+      if (_currentProfile) {
+        _currentProfile.must_change_password = false;
+        _currentProfile.password_changed_at = changedAt;
+      }
       await auditLog('password_reset', { method: 'user_forced_change' });
     }
     return { data, error };
   }
 
-  // ── Data: Profiles (RBAC) ──────────────────────────────────────────────────
-  let _currentProfile = null;
+  function _reauthFailureReason(error) {
+    const code = String(error?.code || '').toLowerCase();
+    const message = String(error?.message || '').toLowerCase();
+    if (code === 'invalid_credentials' || message.includes('invalid login credentials')) {
+      return 'invalid_current_password';
+    }
+    if (error?.status === 429 || code.includes('rate_limit') || code.includes('too_many')) {
+      return 'rate_limited';
+    }
+    return 'reauthentication_failed';
+  }
 
+  async function _syncPasswordVerificationAttempts(client, succeeded, email) {
+    try {
+      if (succeeded) await client.rpc('reset_failed_login');
+      else await client.rpc('log_failed_login', { p_email: email });
+    } catch (error) {
+      // Authentication remains authoritative even if the auxiliary audit RPC
+      // is temporarily unavailable.
+      console.warn('[Supabase] Falha ao atualizar tentativas de autenticação:', error.message);
+    }
+  }
+
+  /**
+   * Changes the password of the authenticated account after confirming the
+   * current credential. Reauthentication prevents an unattended open session
+   * from changing the account password without knowing the existing password.
+   * @param {string} currentPassword
+   * @param {string} newPassword
+   * @returns {Promise<{data?: object, error: object|null, reason?: string}>}
+   */
+  async function changePassword(currentPassword, newPassword) {
+    const client = _getClient();
+    if (!client || !_currentUser?.email) {
+      return { error: new Error('Não autenticado'), reason: 'not_authenticated' };
+    }
+
+    const expectedUserId = _currentUser.id;
+    const { data: authData, error: authError } = await client.auth.signInWithPassword({
+      email: _currentUser.email,
+      password: currentPassword,
+    });
+
+    if (authError) {
+      const reason = _reauthFailureReason(authError);
+      if (reason === 'invalid_current_password') {
+        await _syncPasswordVerificationAttempts(client, false, _currentUser.email);
+      }
+      return { error: authError, reason };
+    }
+
+    if (!authData?.user || authData.user.id !== expectedUserId) {
+      return {
+        error: new Error('Não foi possível confirmar a conta atual.'),
+        reason: 'account_mismatch',
+      };
+    }
+
+    _currentUser = authData.user;
+    await _syncPasswordVerificationAttempts(client, true, _currentUser.email);
+    const { data, error } = await client.auth.updateUser({ password: newPassword });
+    if (error) return { data, error, reason: 'update_failed' };
+
+    _currentUser = data?.user || _currentUser;
+    const changedAt = new Date().toISOString();
+    let profileError = null;
+    try {
+      const profileResult = await client
+        .from('profiles')
+        .update({
+          must_change_password: false,
+          password_changed_at: changedAt,
+        })
+        .eq('id', expectedUserId);
+      profileError = profileResult.error || null;
+    } catch (metadataError) {
+      // The authentication password is already changed at this point. A
+      // metadata/network failure must not report the password change as failed.
+      profileError = metadataError;
+    }
+
+    if (profileError) {
+      console.warn('[Supabase] Senha alterada, mas os metadados do perfil não foram atualizados:', profileError.message);
+    } else if (_currentProfile) {
+      _currentProfile.must_change_password = false;
+      _currentProfile.password_changed_at = changedAt;
+    }
+
+    await auditLog('password_reset', { method: 'account_panel' });
+    return { data, error: null, profileError: profileError || null };
+  }
+
+  // ── Data: Profiles (RBAC) ──────────────────────────────────────────────────
   async function loadProfile() {
     const client = _getClient();
     if (!client || !_currentUser) return null;
@@ -137,7 +237,11 @@ App.Supabase = (function () {
       .select('*')
       .eq('id', _currentUser.id)
       .maybeSingle();
-    if (error) { console.warn('[Supabase] loadProfile error:', error.message); return null; }
+    if (error) {
+      _currentProfile = null;
+      console.warn('[Supabase] loadProfile error:', error.message);
+      return null;
+    }
     _currentProfile = data;
     return data;
   }
@@ -500,6 +604,7 @@ App.Supabase = (function () {
       email: _currentUser.email,
       name:  _currentUser.user_metadata?.display_name || _currentUser.email.split('@')[0],
       createdAt: _currentUser.created_at,
+      lastSignInAt: _currentUser.last_sign_in_at,
     } : null;
   }
 
@@ -529,5 +634,6 @@ App.Supabase = (function () {
     auditLog,
     sendPasswordResetEmail,
     updatePassword,
+    changePassword,
   };
 })();

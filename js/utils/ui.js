@@ -1152,17 +1152,25 @@ App.UI = (function () {
       });
     });
 
-    const approvalCount = Number(state?.project?.aprovacao) || 0;
-    const approvalEls = ['aprov-prefeitura', 'aprov-bombeiros', 'aprov-vigilancia']
-      .map(id => document.getElementById(id)).filter(Boolean);
-    // O modelo persiste apenas a quantidade de aprovacoes, nao quais orgaos.
-    // Hidratamos uma selecao inicial, mas preservamos a escolha concreta feita
-    // pelo usuario durante as renderizacoes reativas seguintes.
-    if (!approvalEls.some(el => el.checked) && approvalCount > 0) {
-      approvalEls.forEach((el, index) => { el.checked = index < approvalCount; });
-    } else if (approvalCount === 0) {
-      approvalEls.forEach(el => { el.checked = false; });
-    }
+    const approvalCount = Math.max(0, Number(state?.project?.aprovacao) || 0);
+    const savedApprovalNames = Array.isArray(state?.project?.aprovacoesSelecionadas)
+      ? state.project.aprovacoesSelecionadas
+      : null;
+    const approvalOptions = [
+      { id: 'aprov-prefeitura', name: 'Prefeitura' },
+      { id: 'aprov-bombeiros', name: 'Bombeiros' },
+      { id: 'aprov-vigilancia', name: 'Vigilância Sanitária' },
+    ];
+    // Old budgets stored only the count. An empty names array combined with a
+    // positive count therefore uses the legacy first-N fallback.
+    const restoreByName = savedApprovalNames && (savedApprovalNames.length > 0 || approvalCount === 0);
+    approvalOptions.forEach((option, index) => {
+      const checkbox = document.getElementById(option.id);
+      if (!checkbox) return;
+      checkbox.checked = restoreByName
+        ? savedApprovalNames.includes(option.name)
+        : index < approvalCount;
+    });
   }
 
   function renderDashboardTeam(state) {

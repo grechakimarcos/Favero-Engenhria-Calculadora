@@ -24,6 +24,7 @@ App.Store = (function () {
         horasManuais: '',
         revisao: 0,
         aprovacao: 0,
+        aprovacoesSelecionadas: [],
         complexidade: 1,
         tipoComercial: 'padrao',
         fatorRisco: 0,

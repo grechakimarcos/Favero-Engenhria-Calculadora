@@ -12,8 +12,9 @@
   <link rel="icon" type="image/x-icon" href="assets/favicon_white.ico" media="(prefers-color-scheme: dark)" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" href="assets/Logo_RF_white.png" as="image" type="image/png" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/main.css?v=9" />
   <!-- users-dashboard.css e users-modal.css são importados via main.css -->
 
   <!-- Supabase JS SDK -->
@@ -527,7 +528,8 @@
                     <!-- Gerado por JS (cascata) -->
                   </div>
                   <div class="result-modal-actions">
-                    <button type="button" id="btn-export-pdf" class="btn btn-ghost">Gerar PDF</button>
+                    <button type="button" id="btn-export-technical-pdf" class="btn btn-ghost">PDF Técnico</button>
+                    <button type="button" id="btn-export-client-pdf" class="btn btn-ghost">PDF para Cliente</button>
                     <button type="button" id="btn-save-history" class="btn btn-primary">Salvar orçamento</button>
                   </div>
                 </div>
@@ -1266,12 +1268,13 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════
-     ACCOUNT MODAL (User Profile & Create User)
+     ACCOUNT MODAL (User Profile & Security)
 ══════════════════════════════════════════════════════ -->
   <div id="account-overlay" class="settings-overlay"></div>
-  <aside id="account-panel" class="settings-panel" aria-label="Menu da Conta" style="width: 400px; max-width: 90vw;">
+  <aside id="account-panel" class="settings-panel" role="dialog" aria-modal="true"
+    aria-labelledby="account-panel-title" aria-hidden="true" inert style="width: 400px; max-width: 90vw;">
     <div class="settings-header">
-      <h2 class="settings-title">
+      <h2 class="settings-title" id="account-panel-title">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           style="vertical-align:-3px;margin-right:8px">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -1304,15 +1307,15 @@
   <script src="js/core/store.js?v=5"></script>
   <script src="js/core/calculator.js?v=5"></script>
   <script src="js/core/charts.js?v=5"></script>
-  <script src="js/core/reports.js?v=5"></script>
+  <script src="js/core/reports.js?v=8"></script>
   <script src="js/utils/formatters.js?v=5"></script>
-  <script src="js/utils/ui.js?v=7"></script>
-  <script src="js/services/supabase.js?v=5"></script>
-  <script src="js/services/auth.js?v=5"></script>
+  <script src="js/utils/ui.js?v=8"></script>
+  <script src="js/services/supabase.js?v=6"></script>
+  <script src="js/services/auth.js?v=6"></script>
   <script src="js/views/settings-ui.js?v=5"></script>
   <script src="js/views/users-ui.js?v=5"></script>
   <script src="js/router.js?v=5"></script>
-  <script src="js/main.js?v=6"></script>
+  <script src="js/main.js?v=7"></script>
 
   <!-- Utility scripts: office summary + keyboard detection -->
   <script>

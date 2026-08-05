@@ -6,7 +6,7 @@
 @import url('variables.css');
 
 /* 2. Base design system (dark theme, all component styles) */
-@import url('legacy.css');
+@import url('legacy.css?v=8');
 
 /* 3. SPA Layout shell (sidebar + main-wrapper) */
 @import url('layout.css');
@@ -21,4 +21,4 @@
 @import url('custom.css');
 
 /* 7. New Dashboard Layout */
-@import url('dashboard.css');
+@import url('dashboard.css?v=9');

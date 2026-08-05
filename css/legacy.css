@@ -87,9 +87,18 @@ textarea:focus-visible {
   cursor: pointer;
   transition: all var(--transition);
 }
+button.user-chip {
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+}
 .user-chip:hover {
   background: var(--bg-elevated);
   border-color: var(--primary-dim);
+}
+.user-chip:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 .user-avatar {
   width: 24px;
@@ -2018,7 +2027,7 @@ body.settings-open { overflow: hidden; }
 .mt-2 { margin-top: 0.75rem; }
 
 /* ============================================================
-   USERS TAB — User card + create form
+   ACCOUNT PANEL — current user card and shared password styles
    ============================================================ */
 
 /* Current user card */
@@ -2081,7 +2090,7 @@ body.settings-open { overflow: hidden; }
 }
 
 /* Divider with label */
-.user-create-divider {
+.account-section-divider {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -2093,8 +2102,8 @@ body.settings-open { overflow: hidden; }
   letter-spacing: 0.07em;
 }
 
-.user-create-divider::before,
-.user-create-divider::after {
+.account-section-divider::before,
+.account-section-divider::after {
   content: '';
   flex: 1;
   height: 1px;
@@ -2110,13 +2119,6 @@ body.settings-open { overflow: hidden; }
   overflow: hidden;
 }
 
-.pwd-strength-fill {
-  height: 100%;
-  width: 0;
-  border-radius: 4px;
-  transition: width 0.3s ease, background 0.3s ease;
-}
-
 .pwd-strength-label {
   display: block;
   font-size: 0.72rem;
@@ -2126,38 +2128,182 @@ body.settings-open { overflow: hidden; }
   transition: color 0.3s;
 }
 
-/* Feedback message */
-.create-user-feedback {
-  display: none;
-  padding: 0.65rem 0.9rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
-  font-weight: 500;
-  line-height: 1.5;
-  animation: feedbackIn 0.25s ease;
+/* ============================================================
+   ACCOUNT PANEL — profile information and password security
+   ============================================================ */
+
+#account-panel .settings-tab-content {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
 }
 
-@keyframes feedbackIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
+#account-panel .user-card-current {
+  margin-bottom: 1.25rem;
 }
 
-.create-user-feedback.success {
-  background: var(--success-dim);
-  color: var(--success);
-  border: 1px solid rgba(16,185,129,0.25);
-}
-
-.create-user-feedback.error {
-  background: var(--danger-dim);
+.user-card-badge[data-status="inactive"],
+.user-card-badge[data-status="blocked"] {
   color: var(--danger);
-  border: 1px solid rgba(239,68,68,0.25);
+  background: var(--danger-dim);
 }
 
-.create-user-feedback.info {
-  background: var(--info-dim);
-  color: #818cf8;
-  border: 1px solid rgba(99,102,241,0.25);
+.user-card-badge[data-status="pending"] {
+  color: var(--warning);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.account-section {
+  padding: 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.account-section-header {
+  margin-bottom: 1rem;
+}
+
+.account-section-header h3 {
+  margin: 0 0 0.25rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.account-section-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.account-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.account-info-item {
+  min-width: 0;
+  padding: 0.7rem 0.75rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.account-info-item-wide {
+  grid-column: 1 / -1;
+}
+
+.account-info-item dt {
+  margin-bottom: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.account-info-item dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 0.79rem;
+  font-weight: 550;
+  line-height: 1.4;
+}
+
+#account-panel .account-section-divider {
+  margin-top: 1.25rem;
+}
+
+.account-security-section {
+  margin-bottom: 0.25rem;
+}
+
+.account-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.account-password-field {
+  position: relative;
+}
+
+.account-password-field input {
+  padding-right: 2.75rem;
+}
+
+.account-password-field .btn-toggle-pwd {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.account-pwd-strength {
+  height: 4px;
+  margin-top: 0.35rem;
+  overflow: hidden;
+  background: var(--bg-surface);
+  border-radius: 4px;
+}
+
+.account-pwd-strength-fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.25s ease, background 0.25s ease;
+}
+
+.account-pwd-strength-label {
+  min-height: 1em;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.account-password-requirements {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.account-password-feedback {
+  display: none;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.account-password-feedback.success {
+  color: var(--success);
+  background: var(--success-dim);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.account-password-feedback.error {
+  color: var(--danger);
+  background: var(--danger-dim);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.account-password-feedback.warning {
+  color: var(--warning);
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.account-password-submit {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 380px) {
+  .account-info-grid { grid-template-columns: 1fr; }
+  .account-info-item-wide { grid-column: auto; }
 }
 
 /* Hide save button on users tab */
