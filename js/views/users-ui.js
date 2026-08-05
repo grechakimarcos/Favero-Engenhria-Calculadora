@@ -8,21 +8,176 @@ App.UsersUI = (function () {
   let _filteredProfiles = [];
   let currentPage = 1;
   let itemsPerPage = 10;
+  let _editReturnFocus = null;
+  let _newUserReturnFocus = null;
+
+  const ROLES = ['admin', 'gestor', 'engenheiro', 'financeiro', 'comercial', 'visitante'];
+  const STATUSES = ['ativo', 'inativo', 'bloqueado', 'pendente'];
+  const ACCESS_ITEMS = [
+    { id: 'calculator', label: 'Calculadora de orçamentos' },
+    { id: 'financial', label: 'Custos, margens e PDF técnico' },
+    { id: 'client_pdf', label: 'PDF comercial para cliente' },
+    { id: 'own_history', label: 'Próprio histórico de projetos' },
+    { id: 'team_history', label: 'Histórico de toda a equipe' },
+    { id: 'settings', label: 'Parâmetros gerais do escritório' },
+    { id: 'users', label: 'Gestão de usuários e permissões' },
+  ];
+  const OPERATIONAL_ACCESS = ['calculator', 'financial', 'client_pdf', 'own_history'];
+  const ROLE_INFO = Object.freeze({
+    admin: {
+      label: 'Administrador',
+      description: 'Acesso administrativo completo, incluindo usuários, parâmetros e todos os históricos.',
+      access: ACCESS_ITEMS.map(item => item.id),
+    },
+    gestor: {
+      label: 'Gestor',
+      description: 'Acesso operacional padrão. Atualmente não possui privilégios administrativos adicionais.',
+      access: OPERATIONAL_ACCESS,
+    },
+    engenheiro: {
+      label: 'Engenheiro',
+      description: 'Calculadora, documentos em PDF e gerenciamento do próprio histórico.',
+      access: OPERATIONAL_ACCESS,
+    },
+    financeiro: {
+      label: 'Financeiro',
+      description: 'Acesso operacional aos cálculos financeiros, PDFs e ao próprio histórico.',
+      access: OPERATIONAL_ACCESS,
+    },
+    comercial: {
+      label: 'Comercial',
+      description: 'Acesso operacional à calculadora, PDFs e ao próprio histórico, incluindo os dados internos do cálculo.',
+      access: OPERATIONAL_ACCESS,
+    },
+    visitante: {
+      label: 'Visitante',
+      description: 'Acesso operacional atual; não é somente leitura e permite gerenciar o próprio histórico.',
+      access: OPERATIONAL_ACCESS,
+    },
+  });
+
+  function getRoleDefinition(role) {
+    const normalized = ROLES.includes(String(role || '').toLowerCase())
+      ? String(role).toLowerCase()
+      : 'visitante';
+    const info = ROLE_INFO[normalized];
+    return {
+      id: normalized,
+      label: info.label,
+      description: info.description,
+      permissions: ACCESS_ITEMS.map(item => ({ ...item, allowed: info.access.includes(item.id) })),
+    };
+  }
+
+  function getComputedStatus(profile) {
+    if (profile?.status === 'inativo') return 'inativo';
+    if (profile?.locked_until && new Date(profile.locked_until) > new Date()) return 'bloqueado';
+    if (profile?.must_change_password) return 'pendente';
+    return 'ativo';
+  }
+
+  function _escapeHtml(value) {
+    return String(value === null || value === undefined ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function _trapModalFocus(event, overlay) {
+    if (event.key !== 'Tab' || !overlay?.classList.contains('visible')) return;
+    const modal = overlay.querySelector('.modern-modal');
+    if (!modal) return;
+    const focusable = Array.from(modal.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex=-1])'
+    )).filter(element => element.getAttribute('aria-hidden') !== 'true');
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (!modal.contains(document.activeElement)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function _renderPermissionMatrix() {
+    const container = document.getElementById('users-permissions-matrix');
+    if (!container) return;
+    const definitions = ROLES.map(getRoleDefinition);
+    container.innerHTML = `
+      <table class="permissions-matrix-table">
+        <thead><tr><th scope="col">Recurso</th>${definitions.map(role => `<th scope="col"><span class="badge badge-role-${role.id}">${role.label}</span></th>`).join('')}</tr></thead>
+        <tbody>${ACCESS_ITEMS.map(item => `
+          <tr>
+            <th scope="row">${item.label}</th>
+            ${definitions.map(role => {
+              const allowed = role.permissions.find(permission => permission.id === item.id)?.allowed;
+              return `<td><span class="permission-state ${allowed ? 'allowed' : 'denied'}" aria-label="${allowed ? 'Permitido' : 'Sem acesso'}">${allowed ? '✓' : '—'}</span></td>`;
+            }).join('')}
+          </tr>`).join('')}</tbody>
+      </table>`;
+    const note = document.getElementById('users-permissions-note');
+    if (note) {
+      note.textContent = 'Permissões atuais: os cinco perfis não administrativos compartilham o mesmo acesso operacional. Somente o Administrador acessa parâmetros, todos os históricos e a gestão de usuários. Mudanças de perfil ou status passam a valer na próxima validação da sessão.';
+    }
+  }
+
+  function _renderRolePreview(containerId, role) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const definition = getRoleDefinition(role);
+    container.dataset.role = definition.id;
+    container.classList.add('role-preview--detailed');
+    container.innerHTML = `
+      <div class="role-preview-heading">
+        <span class="badge badge-role-${definition.id}">${definition.label}</span>
+        <span>${definition.description}</span>
+      </div>
+      <ul class="role-preview-list">
+        ${definition.permissions.map(permission => `<li class="${permission.allowed ? 'allowed' : 'denied'}"><span aria-hidden="true">${permission.allowed ? '✓' : '—'}</span>${permission.label}</li>`).join('')}
+      </ul>`;
+  }
 
   function generateStrongPassword() {
-    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    const lower = "abcdefghijklmnopqrstuvwxyz";
-    const nums = "0123456789";
-    const spec = "!@#$%^&*_-";
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const nums = '0123456789';
+    const spec = '!@#$%^&*_-';
     const all = upper + lower + nums + spec;
-    let pwd = upper[Math.floor(Math.random() * upper.length)] + 
-              lower[Math.floor(Math.random() * lower.length)] + 
-              nums[Math.floor(Math.random() * nums.length)] + 
-              spec[Math.floor(Math.random() * spec.length)];
-    for(let i=0; i<8; i++) {
-      pwd += all[Math.floor(Math.random() * all.length)];
+
+    function secureIndex(length) {
+      if (!window.crypto?.getRandomValues) {
+        throw new Error('O navegador não oferece geração segura de senha.');
+      }
+      const range = 0x100000000;
+      const limit = range - (range % length);
+      const random = new Uint32Array(1);
+      do window.crypto.getRandomValues(random);
+      while (random[0] >= limit);
+      return random[0] % length;
     }
-    return pwd.split('').sort(() => 0.5 - Math.random()).join('');
+
+    const chars = [
+      upper[secureIndex(upper.length)],
+      lower[secureIndex(lower.length)],
+      nums[secureIndex(nums.length)],
+      spec[secureIndex(spec.length)],
+    ];
+    for (let i = 0; i < 8; i += 1) {
+      chars.push(all[secureIndex(all.length)]);
+    }
+    for (let i = chars.length - 1; i > 0; i -= 1) {
+      const j = secureIndex(i + 1);
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join('');
   }
 
   async function loadUsers() {
@@ -32,7 +187,11 @@ App.UsersUI = (function () {
     if (_allProfiles.length === 0) {
       tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px;">Carregando usuários do Supabase...</td></tr>';
       const profiles = await App.Supabase.getAllProfiles();
-      _allProfiles = profiles || [];
+      if (profiles === null) {
+        tbody.innerHTML = '<tr><td colspan="8" class="users-table-message users-table-message--error">Não foi possível carregar os usuários. Verifique sua conexão e permissão de administrador.</td></tr>';
+        return;
+      }
+      _allProfiles = profiles;
     }
     
     if (_allProfiles.length === 0) {
@@ -65,15 +224,15 @@ App.UsersUI = (function () {
     if (!grid) return;
 
     const total = _allProfiles.length;
-    const ativos = _allProfiles.filter(p => p.status !== 'inativo').length;
+    const ativos = _allProfiles.filter(p => getComputedStatus(p) === 'ativo').length;
     const admins = _allProfiles.filter(p => p.role === 'admin').length;
     
     const now = new Date();
     const trintaDias = new Date(now.setDate(now.getDate() - 30));
     const novos = _allProfiles.filter(p => new Date(p.created_at) >= trintaDias).length;
 
-    const bloqueados = _allProfiles.filter(p => p.locked_until && new Date(p.locked_until) > new Date()).length;
-    const inativos = _allProfiles.filter(p => p.status === 'inativo').length;
+    const bloqueados = _allProfiles.filter(p => getComputedStatus(p) === 'bloqueado').length;
+    const inativos = _allProfiles.filter(p => getComputedStatus(p) === 'inativo').length;
 
     grid.innerHTML = `
       <div class="kpi-card">
@@ -137,13 +296,11 @@ App.UsersUI = (function () {
     _filteredProfiles = _allProfiles.filter(p => {
       const matchSearch = (p.nome_completo || '').toLowerCase().includes(searchTerm) || 
                           (p.empresa || '').toLowerCase().includes(searchTerm) ||
-                          (p.email || '').toLowerCase().includes(searchTerm);
+                          (p.email || '').toLowerCase().includes(searchTerm) ||
+                          (p.id || '').toLowerCase().includes(searchTerm);
       const matchRole = roleFilter ? p.role === roleFilter : true;
       
-      let computedStatus = p.status || 'ativo';
-      if (p.locked_until && new Date(p.locked_until) > new Date()) computedStatus = 'bloqueado';
-      else if (p.must_change_password) computedStatus = 'pendente';
-      
+      const computedStatus = getComputedStatus(p);
       const matchStatus = statusFilter ? computedStatus === statusFilter : true;
 
       return matchSearch && matchRole && matchStatus;
@@ -187,6 +344,7 @@ App.UsersUI = (function () {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const paginated = _filteredProfiles.slice(startIndex, endIndex);
+    const currentUserId = App.Supabase.getCurrentUser?.()?.id;
 
     paginated.forEach(p => {
       const tr = document.createElement('tr');
@@ -195,9 +353,7 @@ App.UsersUI = (function () {
       const createdDate = formatDate(p.created_at);
       const lastLogin = p.last_login_at ? formatDate(p.last_login_at) : 'Nunca acessou';
 
-      let computedStatus = p.status || 'ativo';
-      if (p.locked_until && new Date(p.locked_until) > new Date()) computedStatus = 'bloqueado';
-      else if (p.must_change_password) computedStatus = 'pendente';
+      const computedStatus = getComputedStatus(p);
 
       let statusBadge = '';
       let statusLabel = '';
@@ -206,26 +362,32 @@ App.UsersUI = (function () {
       else if (computedStatus === 'ativo') { statusBadge = 'badge-status-ativo'; statusLabel = 'ATIVO'; }
       else { statusBadge = 'badge-status-inativo'; statusLabel = 'INATIVO'; }
 
-      let roleBadge = `badge-role-${p.role || 'visitante'}`;
+      const role = getRoleDefinition(p.role);
+      const isSelf = Boolean(currentUserId && currentUserId === p.id);
+      const displayName = _escapeHtml(p.nome_completo || 'Sem nome');
+      const displayEmail = _escapeHtml(p.email || (p.id ? `ID: ${p.id}` : 'Sem identificador'));
+      const displayCompany = _escapeHtml(p.empresa || '-');
+      const displayJob = _escapeHtml(p.cargo || '-');
+      const safeId = _escapeHtml(p.id || '');
 
       tr.innerHTML = `
         <td data-label="Usuário">
           <div class="user-cell">
-            <div class="user-avatar">${initials}</div>
+            <div class="user-avatar">${_escapeHtml(initials)}</div>
             <div class="user-info">
-              <span class="user-name">${p.nome_completo || 'Sem Nome'}</span>
-              <span class="user-email">${p.email || p.id}</span>
+              <span class="user-name">${displayName}${isSelf ? ' <span class="current-user-tag">Você</span>' : ''}</span>
+              <span class="user-email">${displayEmail}</span>
             </div>
           </div>
         </td>
         <td data-label="Empresa">
-          <div class="cell-text">${p.empresa || '-'}</div>
+          <div class="cell-text">${displayCompany}</div>
         </td>
         <td data-label="Cargo">
-          <div class="cell-text">${p.cargo || '-'}</div>
+          <div class="cell-text">${displayJob}</div>
         </td>
         <td data-label="Perfil">
-          <span class="badge ${roleBadge}">${p.role || 'visitante'}</span>
+          <span class="badge badge-role-${role.id}" title="${_escapeHtml(role.description)}">${role.label}</span>
         </td>
         <td data-label="Status">
           <span class="badge ${statusBadge}">${statusLabel}</span>
@@ -238,13 +400,10 @@ App.UsersUI = (function () {
         </td>
         <td data-label="Ações" style="text-align: right;">
           <div class="row-actions" style="justify-content: flex-end;">
-            <button class="action-btn" title="Permissões" onclick="App.UsersUI.promptRoleUpdate('${p.id}', '${p.role}')">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <button type="button" class="action-btn" data-user-action="edit" data-user-id="${safeId}" title="Editar cadastro" aria-label="Editar cadastro de ${displayName}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
             </button>
-            <button class="action-btn" title="Editar Status" onclick="App.UsersUI.promptStatusUpdate('${p.id}', '${p.status || 'ativo'}')">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-            </button>
-            <button class="action-btn danger" title="Excluir" onclick="App.UsersUI.promptDeleteUser('${p.id}')">
+            <button type="button" class="action-btn danger" data-user-action="delete" data-user-id="${safeId}" title="${isSelf ? 'Não é permitido excluir a própria conta' : 'Excluir usuário'}" aria-label="Excluir ${displayName}" ${isSelf ? 'disabled' : ''}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             </button>
           </div>
@@ -296,14 +455,184 @@ App.UsersUI = (function () {
     }
   }
 
+  // ── Edit User Modal ────────────────────────────────────────────────────────
+  function _setEditFeedback(message, type) {
+    const feedback = document.getElementById('user-edit-feedback');
+    if (!feedback) return;
+    feedback.textContent = message || '';
+    feedback.className = 'user-edit-feedback' + (type ? ` ${type}` : '');
+  }
+
+  function openEditUser(userId, trigger) {
+    const profile = _allProfiles.find(item => item.id === userId);
+    const overlay = document.getElementById('user-edit-overlay');
+    const form = document.getElementById('user-edit-form');
+    if (!profile || !overlay || !form) {
+      App.UI.toast('Não foi possível abrir o cadastro deste usuário.', 'error');
+      return;
+    }
+
+    const currentUserId = App.Supabase.getCurrentUser?.()?.id;
+    const isSelf = Boolean(currentUserId && currentUserId === profile.id);
+    const status = getComputedStatus(profile);
+    const role = getRoleDefinition(profile.role).id;
+    const profileEmail = String(profile.email || '').trim();
+    const identityIdentifier = profileEmail || (profile.id ? `ID do perfil: ${profile.id}` : 'E-mail não disponível');
+    const original = {
+      nome_completo: String(profile.nome_completo || '').trim(),
+      telefone: String(profile.telefone || '').trim(),
+      empresa: String(profile.empresa || '').trim(),
+      cargo: String(profile.cargo || '').trim(),
+      role,
+      status,
+    };
+
+    document.getElementById('eu-id').value = profile.id;
+    const emailInput = document.getElementById('eu-email');
+    emailInput.value = profileEmail;
+    emailInput.placeholder = profileEmail ? '' : 'E-mail não disponível no perfil';
+    document.getElementById('eu-name').value = original.nome_completo;
+    document.getElementById('eu-phone').value = original.telefone;
+    document.getElementById('eu-company').value = original.empresa;
+    document.getElementById('eu-job-title').value = original.cargo;
+    document.getElementById('eu-role').value = role;
+    document.getElementById('eu-status').value = status;
+
+    const avatar = document.getElementById('eu-avatar');
+    const identityName = document.getElementById('eu-identity-name');
+    const identityEmail = document.getElementById('eu-identity-email');
+    const identityStatus = document.getElementById('eu-identity-status');
+    if (avatar) avatar.textContent = getInitials(profile.nome_completo);
+    if (identityName) identityName.textContent = profile.nome_completo || 'Sem nome';
+    if (identityEmail) identityEmail.textContent = identityIdentifier;
+    if (identityStatus) {
+      const statusLabels = {
+        ativo: 'Ativo',
+        inativo: 'Inativo',
+        bloqueado: 'Bloqueado',
+        pendente: '1º acesso',
+      };
+      identityStatus.textContent = statusLabels[status] || 'Usuário';
+      identityStatus.dataset.status = status;
+    }
+
+    const roleSelect = document.getElementById('eu-role');
+    const statusSelect = document.getElementById('eu-status');
+    roleSelect.disabled = isSelf;
+    statusSelect.disabled = isSelf;
+    const selfWarning = document.getElementById('eu-self-warning');
+    if (selfWarning) selfWarning.hidden = !isSelf;
+
+    form.dataset.userId = profile.id;
+    form.dataset.isSelf = String(isSelf);
+    form.dataset.original = JSON.stringify(original);
+    _renderRolePreview('eu-role-preview', role);
+    _setEditFeedback('');
+
+    _editReturnFocus = trigger || document.activeElement;
+    overlay.classList.add('visible');
+    overlay.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => document.getElementById('eu-name')?.focus());
+  }
+
+  function closeEditUserModal() {
+    const overlay = document.getElementById('user-edit-overlay');
+    const form = document.getElementById('user-edit-form');
+    overlay?.classList.remove('visible');
+    overlay?.setAttribute('aria-hidden', 'true');
+    form?.reset();
+    if (form) {
+      delete form.dataset.userId;
+      delete form.dataset.isSelf;
+      delete form.dataset.original;
+    }
+    _setEditFeedback('');
+    if (_editReturnFocus && typeof _editReturnFocus.focus === 'function') _editReturnFocus.focus();
+    _editReturnFocus = null;
+  }
+
+  async function _handleEditUserSubmit(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const submitButton = document.getElementById('btn-user-edit-submit');
+    if (!submitButton || submitButton.disabled) return;
+
+    const userId = form.dataset.userId;
+    const isSelf = form.dataset.isSelf === 'true';
+    const name = document.getElementById('eu-name').value.trim();
+    const role = document.getElementById('eu-role').value;
+    const status = document.getElementById('eu-status').value;
+    if (name.length < 2) {
+      _setEditFeedback('Informe o nome completo do usuário.', 'error');
+      document.getElementById('eu-name').focus();
+      return;
+    }
+    if (!isSelf && !ROLES.includes(role)) {
+      _setEditFeedback('Selecione um perfil de acesso válido.', 'error');
+      return;
+    }
+    if (!isSelf && !STATUSES.includes(status)) {
+      _setEditFeedback('Selecione um status válido.', 'error');
+      return;
+    }
+
+    const values = {
+      nome_completo: name,
+      telefone: document.getElementById('eu-phone').value.trim(),
+      empresa: document.getElementById('eu-company').value.trim(),
+      cargo: document.getElementById('eu-job-title').value.trim(),
+      role,
+      status,
+    };
+    const original = JSON.parse(form.dataset.original || '{}');
+    const editableKeys = isSelf
+      ? ['nome_completo', 'telefone', 'empresa', 'cargo']
+      : ['nome_completo', 'telefone', 'empresa', 'cargo', 'role', 'status'];
+    const changed = editableKeys.some(key => String(values[key] || '') !== String(original[key] || ''));
+    if (!changed) {
+      _setEditFeedback('Nenhuma alteração foi realizada.', 'info');
+      return;
+    }
+
+    const payload = {};
+    editableKeys.forEach(key => { payload[key] = values[key]; });
+    const originalContent = submitButton.innerHTML;
+    submitButton.disabled = true;
+    submitButton.setAttribute('aria-busy', 'true');
+    submitButton.innerHTML = '<span class="spinner" aria-hidden="true"></span> Salvando…';
+    _setEditFeedback('Salvando alterações…', 'info');
+
+    try {
+      const { data, error } = await App.Supabase.updateProfile(userId, payload);
+      if (error || !data) throw error || new Error('O perfil não foi atualizado.');
+      _allProfiles = _allProfiles.map(profile => profile.id === userId
+        ? { ...profile, ...data, email: profile.email || data.email }
+        : profile);
+      renderKPIs();
+      applyFilters();
+      closeEditUserModal();
+      App.UI.toast('Cadastro atualizado com sucesso!', 'success');
+    } catch (error) {
+      console.error('[UsersUI] Falha ao atualizar cadastro:', error);
+      _setEditFeedback(error?.message || 'Não foi possível atualizar o cadastro.', 'error');
+    } finally {
+      submitButton.disabled = false;
+      submitButton.removeAttribute('aria-busy');
+      submitButton.innerHTML = originalContent;
+    }
+  }
+
   // ── New User Modal ──────────────────────────────────────────────────────────
   function openNewUserModal() {
     const overlay = document.getElementById('new-user-overlay');
     if (overlay) {
+      _newUserReturnFocus = document.activeElement;
       overlay.classList.add('visible');
-      
+      overlay.setAttribute('aria-hidden', 'false');
       const pwdInput = document.getElementById('nu-password');
       if (pwdInput) pwdInput.value = generateStrongPassword();
+      _renderRolePreview('nu-role-preview', document.getElementById('nu-role')?.value || 'engenheiro');
+      requestAnimationFrame(() => document.getElementById('nu-email')?.focus());
     }
   }
 
@@ -311,54 +640,100 @@ App.UsersUI = (function () {
     const overlay = document.getElementById('new-user-overlay');
     if (overlay) {
       overlay.classList.remove('visible');
+      overlay.setAttribute('aria-hidden', 'true');
       document.getElementById('new-user-form')?.reset();
       const feedback = document.getElementById('new-user-feedback');
-      if (feedback) feedback.innerHTML = '';
+      if (feedback) feedback.textContent = '';
+      _renderRolePreview('nu-role-preview', document.getElementById('nu-role')?.value || 'engenheiro');
+      if (_newUserReturnFocus && typeof _newUserReturnFocus.focus === 'function') {
+        _newUserReturnFocus.focus();
+      }
+      _newUserReturnFocus = null;
     }
+  }
+
+  async function _completeNewUserProfile(userId, profileData) {
+    let lastResult = { data: null, error: new Error('Perfil ainda não disponível.') };
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 500));
+      lastResult = await App.Supabase.updateProfile(userId, profileData);
+      if (!lastResult.error && lastResult.data) return lastResult;
+    }
+    return lastResult;
   }
 
   async function _handleNewUserSubmit(e) {
     e.preventDefault();
     const btn = document.getElementById('btn-new-user-submit');
     const feedback = document.getElementById('new-user-feedback');
-    const email = document.getElementById('nu-email').value;
-    const name = document.getElementById('nu-name').value;
+    const email = document.getElementById('nu-email').value.trim();
+    const name = document.getElementById('nu-name').value.trim();
     const password = document.getElementById('nu-password').value;
     const role = document.getElementById('nu-role').value;
+    const company = document.getElementById('nu-company')?.value.trim() || '';
+    const jobTitle = document.getElementById('nu-job-title')?.value.trim() || '';
+    const phone = document.getElementById('nu-phone')?.value.trim() || '';
+
+    if (!ROLES.includes(role)) {
+      feedback.textContent = 'Selecione um perfil de acesso válido.';
+      feedback.style.color = 'var(--danger)';
+      return;
+    }
 
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner" style="margin:0 auto;"></span>';
-    feedback.innerHTML = '';
+    const originalContent = btn.innerHTML;
+    btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML = '<span class="spinner" aria-hidden="true"></span> Criando…';
+    feedback.textContent = '';
 
-    const { user, error } = await App.Supabase.signUp(email, password, name);
+    let signUpResult;
+    try {
+      signUpResult = await App.Supabase.signUp(email, password, name);
+    } catch (requestError) {
+      signUpResult = { user: null, error: requestError };
+    }
+    const { user, error } = signUpResult;
 
     if (error) {
       feedback.style.color = 'var(--danger)';
-      feedback.innerHTML = `Erro: ${error.message}`;
+      feedback.textContent = `Erro: ${error.message}`;
       btn.disabled = false;
-      btn.innerHTML = 'Criar Conta';
+      btn.removeAttribute('aria-busy');
+      btn.innerHTML = originalContent;
       return;
     }
 
     if (user) {
-      setTimeout(async () => {
-        await App.Supabase.updateProfileRole(user.id, role);
+      const profileResult = await _completeNewUserProfile(user.id, {
+        nome_completo: name,
+        telefone: phone,
+        empresa: company,
+        cargo: jobTitle,
+        role,
+        status: 'pendente',
+      });
+      if (!profileResult.error && profileResult.data) {
         App.UI.toast('Usuário criado com sucesso!', 'success');
         closeNewUserModal();
         _allProfiles = [];
-        loadUsers(); 
-        btn.disabled = false;
-        btn.innerHTML = 'Criar Conta';
-      }, 1000);
+        await loadUsers();
+      } else {
+        feedback.style.color = 'var(--danger)';
+        feedback.textContent = 'A conta foi criada, mas o cadastro complementar não pôde ser salvo: ' + (profileResult.error?.message || 'erro desconhecido');
+      }
     } else {
       feedback.style.color = 'var(--success)';
-      feedback.innerHTML = `Conta criada. Peça confirmação de email.`;
-      btn.disabled = false;
-      btn.innerHTML = 'Criar Conta';
+      feedback.textContent = 'Conta criada. Peça a confirmação do e-mail.';
     }
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+    btn.innerHTML = originalContent;
   }
 
   function init() {
+    _renderPermissionMatrix();
+    _renderRolePreview('nu-role-preview', document.getElementById('nu-role')?.value || 'engenheiro');
+
     const menuBtn = document.getElementById('menu-usuarios');
     if (menuBtn) {
       menuBtn.addEventListener('click', () => {
@@ -389,10 +764,18 @@ App.UsersUI = (function () {
       if (currentPage < totalPages) { currentPage++; renderUsersTable(); }
     });
 
-    document.getElementById('btn-refresh-users')?.addEventListener('click', () => {
+    document.getElementById('btn-refresh-users')?.addEventListener('click', async () => {
       _allProfiles = [];
-      loadUsers();
+      await loadUsers();
       App.UI.toast('Lista atualizada!', 'success');
+    });
+
+    document.getElementById(tbodyId)?.addEventListener('click', (event) => {
+      const actionButton = event.target.closest('[data-user-action]');
+      if (!actionButton || actionButton.disabled) return;
+      const userId = actionButton.dataset.userId;
+      if (actionButton.dataset.userAction === 'edit') openEditUser(userId, actionButton);
+      if (actionButton.dataset.userAction === 'delete') promptDeleteUser(userId);
     });
 
     // Modal Events
@@ -417,55 +800,42 @@ App.UsersUI = (function () {
       if (e.target.id === 'new-user-overlay') closeNewUserModal();
     });
     document.getElementById('new-user-form')?.addEventListener('submit', _handleNewUserSubmit);
+    document.getElementById('nu-role')?.addEventListener('change', (event) => {
+      _renderRolePreview('nu-role-preview', event.target.value);
+    });
+
+    document.getElementById('btn-user-edit-close')?.addEventListener('click', closeEditUserModal);
+    document.getElementById('btn-cancel-user-edit')?.addEventListener('click', closeEditUserModal);
+    document.getElementById('user-edit-overlay')?.addEventListener('click', (event) => {
+      if (event.target.id === 'user-edit-overlay') closeEditUserModal();
+    });
+    document.getElementById('user-edit-form')?.addEventListener('submit', _handleEditUserSubmit);
+    document.getElementById('eu-role')?.addEventListener('change', (event) => {
+      _renderRolePreview('eu-role-preview', event.target.value);
+    });
     
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && document.getElementById('new-user-overlay')?.classList.contains('visible')) {
+      const editOverlay = document.getElementById('user-edit-overlay');
+      const newOverlay = document.getElementById('new-user-overlay');
+      if (e.key === 'Tab') {
+        _trapModalFocus(e, editOverlay?.classList.contains('visible') ? editOverlay : newOverlay);
+        return;
+      }
+      if (e.key !== 'Escape') return;
+      if (editOverlay?.classList.contains('visible')) {
+        closeEditUserModal();
+      } else if (newOverlay?.classList.contains('visible')) {
         closeNewUserModal();
       }
     });
   }
 
-  async function promptRoleUpdate(userId, currentRole) {
-    const newRole = window.prompt(`Qual será o novo nível de acesso?\nValores válidos: visitante, engenheiro, financeiro, comercial, gestor, admin\n\nNível atual: ${currentRole}`, currentRole);
-    if (!newRole || newRole === currentRole) return;
-    
-    const validRoles = ['visitante', 'engenheiro', 'financeiro', 'comercial', 'gestor', 'admin'];
-    if (!validRoles.includes(newRole.toLowerCase().trim())) {
-      App.UI.toast('Nível de acesso inválido.', 'error');
-      return;
-    }
-    
-    const { error } = await App.Supabase.updateProfileRole(userId, newRole.toLowerCase().trim());
-    if (error) {
-      App.UI.toast('Erro ao atualizar permissão: ' + error.message, 'error');
-    } else {
-      App.UI.toast('Permissão atualizada com sucesso!', 'success');
-      _allProfiles = [];
-      loadUsers();
-    }
-  }
-
-  async function promptStatusUpdate(userId, currentStatus) {
-    const newStatus = window.prompt(`Qual será o novo status?\nValores válidos: ativo, inativo, bloqueado, pendente\n\nStatus atual: ${currentStatus || 'ativo'}`, currentStatus || 'ativo');
-    if (!newStatus || newStatus === currentStatus) return;
-    
-    const validStatus = ['ativo', 'inativo', 'bloqueado', 'pendente'];
-    if (!validStatus.includes(newStatus.toLowerCase().trim())) {
-      App.UI.toast('Status inválido.', 'error');
-      return;
-    }
-    
-    const { error } = await App.Supabase.updateProfileStatus(userId, newStatus.toLowerCase().trim());
-    if (error) {
-      App.UI.toast('Erro ao atualizar status: ' + error.message, 'error');
-    } else {
-      App.UI.toast('Status atualizado com sucesso!', 'success');
-      _allProfiles = [];
-      loadUsers();
-    }
-  }
-
   async function promptDeleteUser(userId) {
+    const currentUserId = App.Supabase.getCurrentUser?.()?.id;
+    if (currentUserId && currentUserId === userId) {
+      App.UI.toast('Não é permitido excluir a própria conta.', 'error');
+      return;
+    }
     const p = _allProfiles.find(x => x.id === userId);
     const label = p ? (p.email || p.nome_completo) : 'este usuário';
     if (!window.confirm(`ATENÇÃO: Deseja realmente excluir ${label}?\n\nIsso removerá o perfil do banco de dados.`)) return;
@@ -476,9 +846,19 @@ App.UsersUI = (function () {
     } else {
       App.UI.toast('Usuário excluído com sucesso!', 'success');
       _allProfiles = [];
-      loadUsers();
+      await loadUsers();
     }
   }
 
-  return { init, loadUsers, openNewUserModal, closeNewUserModal, promptRoleUpdate, promptStatusUpdate, promptDeleteUser };
+  return {
+    init,
+    loadUsers,
+    openNewUserModal,
+    closeNewUserModal,
+    openEditUser,
+    closeEditUserModal,
+    promptDeleteUser,
+    getRoleDefinition,
+    getComputedStatus,
+  };
 })();

@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preload" href="assets/Logo_RF_white.png" as="image" type="image/png" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/main.css?v=9" />
+  <link rel="stylesheet" href="css/main.css?v=11" />
   <!-- users-dashboard.css e users-modal.css são importados via main.css -->
 
   <!-- Supabase JS SDK -->
@@ -722,6 +722,27 @@
               <!-- Renderizado por JS -->
             </div>
 
+            <!-- Matriz de permissões efetivas -->
+            <section class="permissions-panel" aria-labelledby="users-permissions-title">
+              <div class="permissions-panel-header">
+                <div>
+                  <span class="permissions-panel-eyebrow">Controle de acesso</span>
+                  <h3 id="users-permissions-title">Matriz de permissões atuais</h3>
+                  <p>Consulte rapidamente quais áreas e ações estão disponíveis para cada perfil.</p>
+                </div>
+                <span class="permissions-panel-badge">6 perfis</span>
+              </div>
+              <div id="users-permissions-matrix" class="permissions-matrix" role="region"
+                aria-label="Permissões por perfil de acesso" tabindex="0">
+                <div class="permissions-matrix-placeholder" role="status">
+                  Carregando matriz de permissões...
+                </div>
+              </div>
+              <p id="users-permissions-note" class="permissions-note" role="note">
+                Alterações de perfil afetam o acesso do usuário no próximo carregamento da sessão.
+              </p>
+            </section>
+
             <!-- Filtros Card -->
             <div class="filters-card">
               <div class="filters-row">
@@ -837,8 +858,8 @@
 
         <!-- Modal Novo Usuário (Admin) -->
         <div id="new-user-overlay" class="modern-overlay" role="dialog" aria-modal="true"
-          aria-labelledby="modal-new-user-title">
-          <div class="modern-modal" id="new-user-modal">
+          aria-labelledby="modal-new-user-title" aria-hidden="true">
+          <div class="modern-modal modern-modal--wide" id="new-user-modal">
             <div class="modern-modal-header">
               <div class="modern-modal-title-wrapper">
                 <div class="modern-modal-icon">
@@ -864,7 +885,7 @@
             </div>
 
             <div class="modern-modal-body">
-              <form id="new-user-form" style="display: flex; flex-direction: column; gap: 24px;">
+              <form id="new-user-form" class="modern-form-stack">
                 <!-- Email -->
                 <div class="modern-form-group">
                   <label for="nu-email">E-mail</label>
@@ -893,6 +914,47 @@
                   </div>
                   <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: -4px;">Digite o nome completo
                     do usuário.</small>
+                </div>
+
+                <!-- Dados profissionais -->
+                <div class="modern-form-grid">
+                  <div class="modern-form-group">
+                    <label for="nu-company">Empresa</label>
+                    <div class="modern-input-wrapper">
+                      <svg class="modern-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M3 21h18"></path><path d="M6 21V7l6-4 6 4v14"></path>
+                        <path d="M9 9h1"></path><path d="M14 9h1"></path><path d="M9 13h1"></path><path d="M14 13h1"></path>
+                      </svg>
+                      <input type="text" id="nu-company" maxlength="100" autocomplete="organization"
+                        placeholder="Ex.: Fávero Engenharia" />
+                    </div>
+                  </div>
+
+                  <div class="modern-form-group">
+                    <label for="nu-job-title">Cargo / função</label>
+                    <div class="modern-input-wrapper">
+                      <svg class="modern-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <rect x="3" y="7" width="18" height="13" rx="2"></rect>
+                        <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M3 12h18"></path>
+                      </svg>
+                      <input type="text" id="nu-job-title" maxlength="100" autocomplete="organization-title"
+                        placeholder="Ex.: Engenheiro Pleno" />
+                    </div>
+                  </div>
+
+                  <div class="modern-form-group modern-form-group--wide">
+                    <label for="nu-phone">Telefone</label>
+                    <div class="modern-input-wrapper">
+                      <svg class="modern-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92z"></path>
+                      </svg>
+                      <input type="tel" id="nu-phone" maxlength="30" autocomplete="tel"
+                        placeholder="Ex.: (11) 99999-9999" />
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Senha -->
@@ -970,7 +1032,22 @@
                     acesso e permissões do usuário.</small>
                 </div>
 
-                <div id="new-user-feedback" style="font-size: 0.85rem; margin-top: -8px;"></div>
+                <div id="nu-role-preview" class="role-preview" data-role="engenheiro" role="status"
+                  aria-live="polite">
+                  <div class="role-preview-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      stroke-width="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                      <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <strong>Engenheiro</strong>
+                    <span>Acesso às rotinas técnicas e aos próprios projetos.</span>
+                  </div>
+                </div>
+
+                <div id="new-user-feedback" class="modern-form-feedback" role="status" aria-live="polite"></div>
               </form>
 
               <!-- Rodapé explicativo -->
@@ -1046,6 +1123,216 @@
         <!-- ══════════════════════════════════════════════════════
            PARÂMETROS GERAIS (Apenas para Admins)
       ══════════════════════════════════════════════════════ -->
+        <!-- Modal de edição de usuário (Admin) -->
+        <div id="user-edit-overlay" class="modern-overlay" role="dialog" aria-modal="true"
+          aria-labelledby="user-edit-title" aria-describedby="user-edit-description" aria-hidden="true">
+          <div class="modern-modal modern-modal--wide user-edit-modal" id="user-edit-modal" tabindex="-1">
+            <div class="modern-modal-header">
+              <div class="modern-modal-title-wrapper">
+                <div class="modern-modal-icon">
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                    stroke-width="2" aria-hidden="true">
+                    <path d="M12 20h9"></path>
+                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"></path>
+                  </svg>
+                </div>
+                <div>
+                  <h2 class="modern-modal-title" id="user-edit-title">Editar cadastro do usuário</h2>
+                  <p class="modern-modal-subtitle" id="user-edit-description">
+                    Atualize dados profissionais, perfil de acesso e situação da conta.
+                  </p>
+                </div>
+              </div>
+              <button type="button" id="btn-user-edit-close" class="btn-icon"
+                aria-label="Fechar edição do usuário" style="align-self: flex-start; color: var(--text-muted);">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                  stroke-width="2" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            <div class="modern-modal-body">
+              <div class="user-edit-identity">
+                <div class="user-edit-avatar" id="eu-avatar" aria-hidden="true">US</div>
+                <div class="user-edit-identity-copy">
+                  <strong id="eu-identity-name">Cadastro selecionado</strong>
+                  <span id="eu-identity-email">Revise as informações antes de salvar.</span>
+                </div>
+                <span class="user-edit-identity-badge" id="eu-identity-status">Usuário</span>
+              </div>
+
+              <form id="user-edit-form" class="modern-form-stack">
+                <input type="hidden" id="eu-id" />
+
+                <section class="user-edit-section" aria-labelledby="user-edit-data-title">
+                  <div class="user-edit-section-heading">
+                    <h3 id="user-edit-data-title">Dados cadastrais</h3>
+                    <p>Informações usadas para identificar o usuário e sua função na empresa.</p>
+                  </div>
+
+                  <div class="modern-form-grid">
+                    <div class="modern-form-group">
+                      <label for="eu-email">E-mail de acesso</label>
+                      <div class="modern-input-wrapper">
+                        <svg class="modern-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                          <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                        <input type="email" id="eu-email" readonly aria-readonly="true" autocomplete="email" />
+                      </div>
+                      <small>O e-mail de autenticação não é alterado nesta tela.</small>
+                    </div>
+
+                    <div class="modern-form-group">
+                      <label for="eu-name">Nome completo</label>
+                      <div class="modern-input-wrapper">
+                        <svg class="modern-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <input type="text" id="eu-name" required maxlength="100" autocomplete="name"
+                          placeholder="Nome e sobrenome" />
+                      </div>
+                    </div>
+
+                    <div class="modern-form-group">
+                      <label for="eu-phone">Telefone</label>
+                      <div class="modern-input-wrapper">
+                        <svg class="modern-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                        <input type="tel" id="eu-phone" maxlength="30" autocomplete="tel"
+                          placeholder="(00) 00000-0000" />
+                      </div>
+                    </div>
+
+                    <div class="modern-form-group">
+                      <label for="eu-company">Empresa</label>
+                      <div class="modern-input-wrapper">
+                        <svg class="modern-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <path d="M3 21h18"></path><path d="M6 21V7l6-4 6 4v14"></path>
+                          <path d="M9 9h1"></path><path d="M14 9h1"></path><path d="M9 13h1"></path><path d="M14 13h1"></path>
+                        </svg>
+                        <input type="text" id="eu-company" maxlength="100" autocomplete="organization"
+                          placeholder="Nome da empresa" />
+                      </div>
+                    </div>
+
+                    <div class="modern-form-group modern-form-group--wide">
+                      <label for="eu-job-title">Cargo / função</label>
+                      <div class="modern-input-wrapper">
+                        <svg class="modern-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <rect x="3" y="7" width="18" height="13" rx="2"></rect>
+                          <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M3 12h18"></path>
+                        </svg>
+                        <input type="text" id="eu-job-title" maxlength="100" autocomplete="organization-title"
+                          placeholder="Cargo ou função profissional" />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <fieldset class="user-edit-section user-edit-access">
+                  <legend>Acesso e situação</legend>
+                  <p class="user-edit-section-description">
+                    Defina o que o usuário pode acessar e se a conta está liberada para uso.
+                  </p>
+
+                  <div class="modern-form-grid">
+                    <div class="modern-form-group">
+                      <label for="eu-role">Perfil de acesso</label>
+                      <div class="modern-input-wrapper">
+                        <svg class="modern-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        <select id="eu-role" required>
+                          <option value="visitante">Visitante</option>
+                          <option value="engenheiro">Engenheiro</option>
+                          <option value="comercial">Comercial</option>
+                          <option value="financeiro">Financeiro</option>
+                          <option value="gestor">Gestor</option>
+                          <option value="admin">Administrador</option>
+                        </select>
+                        <svg class="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div class="modern-form-group">
+                      <label for="eu-status">Status da conta</label>
+                      <div class="modern-input-wrapper">
+                        <svg class="modern-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <circle cx="12" cy="12" r="9"></circle><path d="m8 12 2.5 2.5L16 9"></path>
+                        </svg>
+                        <select id="eu-status" required>
+                          <option value="ativo">Ativo</option>
+                          <option value="inativo">Inativo</option>
+                          <option value="bloqueado">Bloqueado</option>
+                          <option value="pendente">Pendente de primeiro acesso</option>
+                        </select>
+                        <svg class="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div id="eu-role-preview" class="role-preview" data-role="visitante" role="status"
+                    aria-live="polite">
+                    <div class="role-preview-icon" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <strong>Visitante</strong>
+                      <span>Acesso operacional atual à calculadora, PDFs e ao próprio histórico.</span>
+                    </div>
+                  </div>
+                </fieldset>
+
+                <div id="eu-self-warning" class="user-edit-warning" role="alert" hidden>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" aria-hidden="true">
+                    <path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0Z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                  <span>Você está editando a própria conta. Perfil de acesso e status ficam protegidos; somente os dados cadastrais podem ser alterados.</span>
+                </div>
+
+                <div id="user-edit-feedback" class="modern-form-feedback" role="status"
+                  aria-live="polite"></div>
+              </form>
+            </div>
+
+            <div class="modern-modal-footer modern-actions">
+              <button type="button" class="btn-cancel" id="btn-cancel-user-edit">Cancelar</button>
+              <button type="submit" form="user-edit-form" class="btn btn-primary btn-submit"
+                id="btn-user-edit-submit">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" aria-hidden="true">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Salvar alterações
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div id="view-parametros" class="view">
           <section id="settings-section" aria-labelledby="settings-heading">
 
@@ -1311,11 +1598,11 @@
   <script src="js/core/reports.js?v=10"></script>
   <script src="js/utils/formatters.js?v=5"></script>
   <script src="js/utils/ui.js?v=8"></script>
-  <script src="js/services/supabase.js?v=6"></script>
-  <script src="js/services/auth.js?v=6"></script>
+  <script src="js/services/supabase.js?v=7"></script>
+  <script src="js/services/auth.js?v=7"></script>
   <script src="js/views/settings-ui.js?v=5"></script>
-  <script src="js/views/users-ui.js?v=5"></script>
-  <script src="js/router.js?v=5"></script>
+  <script src="js/views/users-ui.js?v=6"></script>
+  <script src="js/router.js?v=6"></script>
   <script src="js/main.js?v=7"></script>
 
   <!-- Utility scripts: office summary + keyboard detection -->

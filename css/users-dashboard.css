@@ -97,6 +97,195 @@
   gap: 4px;
 }
 
+/* Matriz de permissões */
+.permissions-panel {
+  background:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.07), transparent 42%),
+    var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+}
+
+.permissions-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.permissions-panel-eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--primary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.permissions-panel-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.permissions-panel-header p {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.permissions-panel-badge {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.permissions-matrix {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.12);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.permissions-matrix:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.permissions-matrix table,
+.permissions-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.permissions-matrix th,
+.permissions-matrix td,
+.permissions-table th,
+.permissions-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.permissions-matrix th,
+.permissions-table th {
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-muted);
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.permissions-matrix th:first-child,
+.permissions-matrix td:first-child,
+.permissions-table th:first-child,
+.permissions-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 138px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-weight: 650;
+  text-align: left;
+}
+
+.permissions-matrix tr:last-child td,
+.permissions-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.permission-state,
+.permission-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.permission-state.allowed,
+.permission-indicator.allowed,
+.permission-yes {
+  background: rgba(16, 185, 129, 0.13);
+  color: #34d399;
+}
+
+.permission-state.limited,
+.permission-indicator.limited,
+.permission-limited {
+  background: rgba(245, 158, 11, 0.13);
+  color: #fbbf24;
+}
+
+.permission-state.denied,
+.permission-indicator.denied,
+.permission-no {
+  background: rgba(148, 163, 184, 0.09);
+  color: var(--text-muted);
+}
+
+.permissions-matrix-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 92px;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.permissions-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 12px 2px 0;
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  line-height: 1.5;
+}
+
+.permissions-note::before {
+  content: "i";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--primary);
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
 /* Filtros */
 .filters-card {
   background: var(--bg-card);
@@ -251,6 +440,16 @@
   vertical-align: middle;
 }
 
+.modern-table td.users-table-message {
+  padding: 40px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.modern-table td.users-table-message--error {
+  color: var(--danger, #ef4444);
+}
+
 .modern-table tr:hover td {
   background: rgba(255, 255, 255, 0.02);
 }
@@ -367,6 +566,31 @@
   color: #ef4444;
 }
 
+.action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.action-btn:disabled:hover {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.current-user-tag {
+  display: inline-flex;
+  margin-left: 5px;
+  padding: 2px 6px;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary);
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+
 /* Pagination */
 .pagination-container {
   display: flex;
@@ -440,10 +664,10 @@
 
 /* Mobile Responsiveness - Card View */
 @media (max-width: 1024px) {
-  .modern-table th:nth-child(4),
-  .modern-table td:nth-child(4), /* Empresa */
-  .modern-table th:nth-child(8),
-  .modern-table td:nth-child(8) /* Ultimo acesso */ {
+  .modern-table th:nth-child(2),
+  .modern-table td:nth-child(2), /* Empresa */
+  .modern-table th:nth-child(6),
+  .modern-table td:nth-child(6) /* Último acesso */ {
     display: none;
   }
 }
@@ -457,6 +681,28 @@
   
   .dashboard-title-wrapper {
     width: 100%;
+  }
+
+  .dashboard-header > .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .permissions-panel {
+    padding: 16px;
+  }
+
+  .permissions-panel-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .permissions-panel-badge {
+    align-self: flex-start;
+  }
+
+  .permissions-matrix {
+    margin-inline: -1px;
   }
 
   .modern-table thead {
@@ -497,5 +743,35 @@
     margin-top: 12px;
     padding-top: 12px;
     border-top: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .actions-toolbar,
+  .pagination-container {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .pagination-controls {
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 480px) {
+  .permissions-panel {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .permissions-matrix table,
+  .permissions-table {
+    min-width: 660px;
+  }
+
+  .permissions-matrix th,
+  .permissions-matrix td,
+  .permissions-table th,
+  .permissions-table td {
+    padding: 10px 11px;
   }
 }

@@ -252,7 +252,7 @@ App.Supabase = (function () {
 
   async function getAllProfiles() {
     const client = _getClient();
-    if (!client || !_currentUser) return [];
+    if (!client || !_currentUser) return null;
     const { data, error } = await client
       .from('profiles')
       .select('*')
@@ -260,49 +260,124 @@ App.Supabase = (function () {
     
     if (error) {
       console.warn('[Supabase] getAllProfiles error:', error.message);
-      return [];
+      return null;
     }
-    return data || [];
+    return (data || []).map(profile => (
+      profile.id === _currentUser.id && !profile.email
+        ? { ...profile, email: _currentUser.email || null }
+        : profile
+    ));
+  }
+
+  const PROFILE_ROLES = ['visitante', 'engenheiro', 'financeiro', 'comercial', 'gestor', 'admin'];
+  const PROFILE_STATUSES = ['ativo', 'inativo', 'bloqueado', 'pendente'];
+
+  function _profileText(value) {
+    const text = value === null || value === undefined ? '' : String(value).trim();
+    return text || null;
+  }
+
+  /**
+   * Updates an existing profile using a strict allow-list. E-mail and security
+   * metadata are intentionally excluded because they belong to Supabase Auth.
+   */
+  async function updateProfile(userId, changes) {
+    const client = _getClient();
+    if (!client || !_currentUser) return { data: null, error: new Error('Não autenticado.') };
+    if (!userId) return { data: null, error: new Error('Usuário inválido.') };
+
+    const input = changes || {};
+    const editableFields = ['nome_completo', 'telefone', 'empresa', 'cargo', 'role', 'status'];
+    const providedFields = editableFields.filter(field => Object.prototype.hasOwnProperty.call(input, field));
+    if (providedFields.length === 0) {
+      return { data: null, error: new Error('Nenhum campo editável foi informado.') };
+    }
+    const isOwnProfile = userId === _currentUser.id;
+    if (isOwnProfile && providedFields.some(field => field === 'role' || field === 'status')) {
+      return { data: null, error: new Error('O próprio perfil e status não podem ser alterados por esta tela.') };
+    }
+
+    const updates = { updated_at: new Date().toISOString() };
+
+    if (Object.prototype.hasOwnProperty.call(input, 'nome_completo')) {
+      updates.nome_completo = _profileText(input.nome_completo);
+      if (!updates.nome_completo || updates.nome_completo.length < 2) {
+        return { data: null, error: new Error('Informe o nome completo.') };
+      }
+      if (updates.nome_completo.length > 100) {
+        return { data: null, error: new Error('O nome deve ter no máximo 100 caracteres.') };
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(input, 'telefone')) {
+      updates.telefone = _profileText(input.telefone);
+      if (updates.telefone?.length > 30) {
+        return { data: null, error: new Error('O telefone deve ter no máximo 30 caracteres.') };
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(input, 'empresa')) {
+      updates.empresa = _profileText(input.empresa);
+      if (updates.empresa?.length > 100) {
+        return { data: null, error: new Error('A empresa deve ter no máximo 100 caracteres.') };
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(input, 'cargo')) {
+      updates.cargo = _profileText(input.cargo);
+      if (updates.cargo?.length > 100) {
+        return { data: null, error: new Error('O cargo deve ter no máximo 100 caracteres.') };
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(input, 'role')) {
+      const role = String(input.role || '').toLowerCase().trim();
+      if (!PROFILE_ROLES.includes(role)) return { data: null, error: new Error('Perfil de acesso inválido.') };
+      updates.role = role;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(input, 'status')) {
+      const status = String(input.status || '').toLowerCase().trim();
+      if (!PROFILE_STATUSES.includes(status)) return { data: null, error: new Error('Status de usuário inválido.') };
+      updates.failed_login_attempts = 0;
+      if (status === 'bloqueado') {
+        const lockEnd = new Date();
+        lockEnd.setFullYear(lockEnd.getFullYear() + 10);
+        updates.status = 'ativo';
+        updates.locked_until = lockEnd.toISOString();
+        updates.must_change_password = false;
+      } else if (status === 'pendente') {
+        updates.status = 'ativo';
+        updates.locked_until = null;
+        updates.must_change_password = true;
+      } else {
+        updates.status = status;
+        updates.locked_until = null;
+        updates.must_change_password = false;
+      }
+    }
+
+    let response;
+    try {
+      response = await client.from('profiles').update(updates).eq('id', userId).select();
+    } catch (error) {
+      return { data: null, error };
+    }
+    if (response.error) return { data: response.data || null, error: response.error };
+    const updatedProfile = Array.isArray(response.data) ? response.data[0] : response.data;
+    if (!updatedProfile) return { data: null, error: new Error('Perfil não encontrado ou sem permissão para editar.') };
+
+    if (_currentProfile?.id === userId) _currentProfile = { ..._currentProfile, ...updatedProfile };
+    await auditLog('profile_updated', {
+      target_user_id: userId,
+      fields: Object.keys(updates).filter(field => field !== 'updated_at'),
+    });
+    return { data: updatedProfile, error: null };
   }
 
   async function updateProfileRole(userId, newRole) {
-    const client = _getClient();
-    if (!client) return { error: { message: 'No client' } };
-    
-    const { data, error } = await client
-      .from('profiles')
-      .update({ role: newRole, updated_at: new Date().toISOString() })
-      .eq('id', userId)
-      .select();
-      
-    return { data, error };
+    return updateProfile(userId, { role: newRole });
   }
 
   async function updateProfileStatus(userId, newStatus) {
-    const client = _getClient();
-    if (!client) return { error: { message: 'No client' } };
-    
-    const updates = { updated_at: new Date().toISOString() };
-    if (newStatus === 'ativo' || newStatus === 'inativo') {
-      updates.status = newStatus;
-      updates.locked_until = null;
-    } else if (newStatus === 'bloqueado') {
-      updates.status = 'ativo';
-      const future = new Date();
-      future.setFullYear(future.getFullYear() + 10);
-      updates.locked_until = future.toISOString();
-    } else if (newStatus === 'pendente') {
-      updates.status = 'ativo';
-      updates.must_change_password = true;
-    }
-
-    const { data, error } = await client
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
-      .select();
-      
-    return { data, error };
+    return updateProfile(userId, { status: newStatus });
   }
 
   async function deleteProfile(userId) {
@@ -619,6 +694,7 @@ App.Supabase = (function () {
     loadProfile,
     getProfile,
     getAllProfiles,
+    updateProfile,
     updateProfileRole,
     updateProfileStatus,
     deleteProfile,

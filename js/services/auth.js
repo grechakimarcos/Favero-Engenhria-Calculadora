@@ -159,6 +159,13 @@ App.Auth = (function () {
   }
 
   // ── Role Based Access Control (RBAC) ─────────────────────────────────────────
+  function canAccessView(viewId, profile) {
+    const restrictedViews = ['usuarios', 'parametros'];
+    if (!restrictedViews.includes(viewId)) return true;
+    const effectiveProfile = profile || App.Supabase?.getProfile?.();
+    return effectiveProfile?.role === 'admin';
+  }
+
   function _applyPermissions(profile) {
     console.debug('[RBAC] Perfil carregado:', profile?.role || 'visitante');
     const role = profile?.role || 'visitante';
@@ -757,5 +764,5 @@ App.Auth = (function () {
     }
   }
 
-  return { init };
+  return { init, canAccessView };
 })();

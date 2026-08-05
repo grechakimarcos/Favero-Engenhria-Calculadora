@@ -12,10 +12,10 @@
 @import url('layout.css');
 
 /* 4. Users Dashboard view */
-@import url('users-dashboard.css');
+@import url('users-dashboard.css?v=3');
 
 /* 5. New User modal */
-@import url('users-modal.css');
+@import url('users-modal.css?v=3');
 
 /* 6. Premium polish — animations, utilities, modern overrides */
 @import url('custom.css');

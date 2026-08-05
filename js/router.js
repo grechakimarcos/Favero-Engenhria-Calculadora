@@ -34,6 +34,10 @@ App.Router = (function () {
   }
 
   function navigate(viewId) {
+    if (window.App?.Auth && typeof App.Auth.canAccessView === 'function' && !App.Auth.canAccessView(viewId)) {
+      App.UI?.toast?.('Seu perfil não possui acesso a esta área.', 'error');
+      return false;
+    }
     if (_activeView === viewId) return;
 
     // Update Nav
@@ -83,6 +87,7 @@ App.Router = (function () {
         App.SettingsUI.render();
       });
     }
+    return true;
   }
 
   return { init, navigate };
