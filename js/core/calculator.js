@@ -10,18 +10,24 @@ window.App = window.App || {};
 App.Calculator = (function () {
   const Config = App.Config;
 
+  function numeroSeguro(value, fallback = 0, min = 0, max = Number.MAX_SAFE_INTEGER) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.min(max, Math.max(min, parsed));
+  }
+
   // ── Office-Level Aggregations ──────────────────────────────────────────────
 
   function totalHorasProdutivas(collaborators) {
-    return collaborators.reduce((s, c) => s + ((c && c.horasMensais) || 0), 0);
+    return collaborators.reduce((s, c) => s + numeroSeguro(c?.horasMensais), 0);
   }
 
   function totalCustosDiretos(collaborators) {
-    return collaborators.reduce((s, c) => s + ((c && c.custoMensal) || 0), 0);
+    return collaborators.reduce((s, c) => s + numeroSeguro(c?.custoMensal), 0);
   }
 
   function totalCustosIndiretos(indirectCosts) {
-    return indirectCosts.reduce((s, c) => s + ((c && c.valor) || 0), 0);
+    return indirectCosts.reduce((s, c) => s + numeroSeguro(c?.valor), 0);
   }
 
   function rateioIndiretoHora(indirectCosts, collaborators) {
@@ -31,10 +37,12 @@ App.Calculator = (function () {
   }
 
   function custoRealHoraPorColaborador(colab, indirectCosts, collaborators) {
-    if (!colab || colab.horasMensais === 0) return 0;
-    const direto = colab.custoMensal / colab.horasMensais;
+    if (!colab) return 0;
+    const horasMensais = numeroSeguro(colab.horasMensais);
+    if (horasMensais === 0) return 0;
+    const direto = numeroSeguro(colab.custoMensal) / horasMensais;
     const rateio = rateioIndiretoHora(indirectCosts, collaborators);
-    const fatorProd = (colab.produtividade || 100) / 100;
+    const fatorProd = numeroSeguro(colab.produtividade, 100, 1, 150) / 100;
     // Productivity factor: lower productivity = higher effective cost per hour
     return (direto + rateio) / fatorProd;
   }
@@ -53,19 +61,21 @@ App.Calculator = (function () {
     const d = (state.disciplinas || {})[project.disciplina];
     if (!d) return { horasBase: 0, fonte: 'erro', horasPorM2: 0 };
 
-    const horasPorM2 = d.horasRef / d.areaRef;
-    const horasEquipe = team.reduce((s, t) => s + (Number(t.horas) || 0), 0);
+    const areaRef = numeroSeguro(d.areaRef);
+    const horasRef = numeroSeguro(d.horasRef);
+    const horasPorM2 = areaRef > 0 ? horasRef / areaRef : 0;
+    const horasEquipe = team.reduce((s, t) => s + numeroSeguro(t?.horas), 0);
 
     if (horasEquipe > 0) {
       return { horasBase: horasEquipe, fonte: 'equipe', horasPorM2 };
     }
 
-    const horasManuais = Number(project.horasManuais) || 0;
+    const horasManuais = numeroSeguro(project.horasManuais);
     if (horasManuais > 0) {
       return { horasBase: horasManuais, fonte: 'manual', horasPorM2 };
     }
 
-    const area = Number(project.area) || 0;
+    const area = numeroSeguro(project.area);
     if (area > 0) {
       // Economies of scale for large areas
       let fatorEscala = 1.0;
@@ -102,8 +112,13 @@ App.Calculator = (function () {
     
     const fTipo  = Config.FATORES_TIPO[project.tipoComercial]        || 1.0;
     
+    const totalSemLimite = 1
+      + (fEdif - 1) + (fRev - 1) + (fAprov - 1)
+      + (fCmp - 1) + (fRisco - 1);
+    const total = Math.min(Config.MAX_FATOR_ESFORCO || 2.5, Math.max(0.5, totalSemLimite));
+
     return { fEdif, fRev, fAprov, fCmp, fRisco, fUrg, fTipo,
-             total: fEdif * fRev * fAprov * fCmp * fRisco * fUrg };
+             total, totalSemLimite, limitado: total < totalSemLimite };
   }
 
   // ── Main Calculation Engine ────────────────────────────────────────────────
@@ -129,15 +144,19 @@ App.Calculator = (function () {
     // 1. Hours
     const { horasBase, fonte, horasPorM2 } = calcularHorasBase(project, team, state);
     const esforco = calcularFatorEsforco(project);
-    const fatorEsforco = esforco.total;
+    // Horas distribuidas pela equipe ou informadas manualmente ja sao finais.
+    // Aplicar os fatores novamente contaria o mesmo esforco duas vezes.
+    const fatorEsforco = fonte === 'area' ? esforco.total : 1;
     const horasFinais = horasBase * fatorEsforco;
 
     // 2. Team cost breakdown
-    const horasEquipe = team.reduce((s, t) => s + (Number(t.horas) || 0), 0);
+    const horasEquipe = team.reduce((s, t) => s + numeroSeguro(t?.horas), 0);
     const fatorDistribuicao = horasEquipe > 0 ? horasFinais / horasEquipe : 1;
     const rateio = rateioIndiretoHora(indirectCosts, collaborators);
 
     let custoInternoEquipe = 0;
+    let custoDiretoEquipe = 0;
+    let custoIndiretoRateadoProjeto = 0;
     const detalhesEquipe = [];
 
     if (team.length > 0) {
@@ -151,7 +170,7 @@ App.Calculator = (function () {
         if (!colab) return;
         
         let horasAjustadas = 0;
-        let inputHoras = Number(membro.horas) || 0;
+        let inputHoras = numeroSeguro(membro.horas);
         
         if (useEqualDistribution) {
           horasAjustadas = equalHours;
@@ -161,8 +180,18 @@ App.Calculator = (function () {
         }
 
         const custoHora = custoRealHoraPorColaborador(colab, indirectCosts, collaborators);
+        const horasMensaisColab = numeroSeguro(colab.horasMensais);
+        const produtividade = numeroSeguro(colab.produtividade, 100, 1, 150) / 100;
+        const custoDiretoHora = horasMensaisColab > 0
+          ? (numeroSeguro(colab.custoMensal) / horasMensaisColab) / produtividade
+          : 0;
+        const custoIndiretoHora = rateio / produtividade;
         const custoTotal = horasAjustadas * custoHora;
+        const custoDiretoTotal = horasAjustadas * custoDiretoHora;
+        const custoIndiretoTotal = horasAjustadas * custoIndiretoHora;
         custoInternoEquipe += custoTotal;
+        custoDiretoEquipe += custoDiretoTotal;
+        custoIndiretoRateadoProjeto += custoIndiretoTotal;
         
         detalhesEquipe.push({
           nome: colab.nome,
@@ -170,7 +199,11 @@ App.Calculator = (function () {
           horas: inputHoras,
           horasAjustadas,
           custoHora,
+          custoDiretoHora,
+          custoIndiretoHora,
           custoTotal,
+          custoDiretoTotal,
+          custoIndiretoTotal,
           percentual: 0,
         });
       });
@@ -182,22 +215,37 @@ App.Calculator = (function () {
       // Fallback: use office average if NO team members are selected at all
       const media = custoMedioHora(collaborators, indirectCosts);
       custoInternoEquipe = horasFinais * media;
+      const totalH = totalHorasProdutivas(collaborators);
+      const custoDiretoMedio = totalH > 0 ? totalCustosDiretos(collaborators) / totalH : 0;
+      custoDiretoEquipe = horasFinais * custoDiretoMedio;
+      custoIndiretoRateadoProjeto = horasFinais * rateio;
     }
 
     // 3. Extra costs
-    const despesasExtras = (Number(costs.art) || 0) + (Number(costs.outros) || 0);
+    const despesasExtras = numeroSeguro(costs.art) + numeroSeguro(costs.outros);
     const custoInternoTotal = custoInternoEquipe + despesasExtras;
 
     // 4. Pricing candidates
-    const valorHoraComercial = d.valorBase / d.horasRef;
+    const horasReferencia = numeroSeguro(d.horasRef);
+    const valorHoraComercial = horasReferencia > 0
+      ? numeroSeguro(d.valorBase) / horasReferencia
+      : 0;
     // fatorTipo already captured inside esforco — reuse for clarity
     const fatorTipo = esforco.fTipo;
 
     // 5. Final price (max of three candidates)
     // 5. Final price base (max of three candidates)
-    const valorMinimoPorCusto      = custoInternoTotal * settings.multiplicadorMinimo;
-    const ticketMinimoComDespesas  = d.ticketMinimo + despesasExtras;
-    const valorReferenciaComercial = (horasFinais * valorHoraComercial * fatorTipo) + despesasExtras;
+    const multiplicadorMinimo = numeroSeguro(
+      settings.multiplicadorMinimo,
+      Config.MULTIPLICADOR_MINIMO_CUSTO,
+      1,
+      Config.MAX_MULTIPLICADOR_CUSTO || 3
+    );
+    const impostoSimples = numeroSeguro(settings.impostoSimples, Config.IMPOSTO_SIMPLES, 0, 0.5);
+    const valorMinimoPorCusto      = custoInternoTotal * multiplicadorMinimo;
+    const ticketMinimoComDespesas  = numeroSeguro(d.ticketMinimo) + despesasExtras;
+    // Urgencia remunera a compressao do prazo sem criar horas ficticias.
+    const valorReferenciaComercial = (horasFinais * valorHoraComercial * fatorTipo * esforco.fUrg) + despesasExtras;
 
     const valorFinalBase = Math.max(valorReferenciaComercial, valorMinimoPorCusto, ticketMinimoComDespesas);
     
@@ -206,13 +254,13 @@ App.Calculator = (function () {
     const ajuste = project.ajusteComercial || { desconto: 0, acrescimo: 0, valorFechado: null };
     
     if (ajuste.valorFechado && Number(ajuste.valorFechado) > 0) {
-      valorFinal = Number(ajuste.valorFechado);
+      valorFinal = numeroSeguro(ajuste.valorFechado);
     } else {
-      valorFinal += Number(ajuste.acrescimo || 0) - Number(ajuste.desconto || 0);
+      valorFinal += numeroSeguro(ajuste.acrescimo) - numeroSeguro(ajuste.desconto);
     }
     valorFinal = Math.max(0, valorFinal); // impede preco negativo
 
-    const imposto       = valorFinal * settings.impostoSimples;
+    const imposto       = valorFinal * impostoSimples;
     const valorLiquido  = valorFinal - imposto;
 
     // 6. KPI Indicators (Baseados no valor ajustado)
@@ -237,11 +285,11 @@ App.Calculator = (function () {
                                  alertas.push({ tipo: 'success', msg: '✅ Projeto com margem saudável.' });
 
     // 7. Pricing by individual collaborator (new model)
-    const margem = Number(costs.margemLucro) || 0;
+    const margem = numeroSeguro(costs.margemLucro, 0, 0, 90);
     const precificacaoIndividual = collaborators.map(colab => {
       const custoHora = custoRealHoraPorColaborador(colab, indirectCosts, collaborators);
       const custoTotalInt = horasFinais * custoHora;
-      const divisor = 1 - settings.impostoSimples - (margem / 100);
+      const divisor = 1 - impostoSimples - (margem / 100);
       const precoSugerido = divisor > 0.01 ? custoTotalInt / divisor : 0;
       return { id: colab.id, nome: colab.nome, cargo: colab.cargo, custoHora, custoTotalInt, precoSugerido };
     });
@@ -250,9 +298,9 @@ App.Calculator = (function () {
     // Use epsilon comparison to avoid float precision errors.
     const EPS = 0.005; // half a cent tolerance
     let determinante = '📊 Valor Comercial de Referência';
-    if (Math.abs(valorFinal - valorMinimoPorCusto) < EPS && valorMinimoPorCusto > 0) {
-      determinante = `🎯 Custo da Equipe (x${settings.multiplicadorMinimo})`;
-    } else if (Math.abs(valorFinal - ticketMinimoComDespesas) < EPS) {
+    if (Math.abs(valorFinalBase - valorMinimoPorCusto) < EPS && valorMinimoPorCusto > 0) {
+      determinante = `🎯 Custo da Equipe (x${multiplicadorMinimo})`;
+    } else if (Math.abs(valorFinalBase - ticketMinimoComDespesas) < EPS) {
       determinante = '🛡️ Ticket Mínimo da Disciplina';
     }
 
@@ -275,8 +323,12 @@ App.Calculator = (function () {
         urgencia:   esforco.fUrg,
         tipoComercial: esforco.fTipo,
       },
+      fatorEsforcoSemLimite: esforco.totalSemLimite,
+      fatorEsforcoLimitado: esforco.limitado,
+      multiplicadorMinimoAplicado: multiplicadorMinimo,
       // Cost
-      custoInternoEquipe, despesasExtras, custoInternoTotal,
+      custoInternoEquipe, custoDiretoEquipe, custoIndiretoRateadoProjeto,
+      despesasExtras, custoInternoTotal,
       // Pricing candidates
       valorHoraComercial, valorReferenciaComercial, valorMinimoPorCusto, ticketMinimoComDespesas,
       fatorTipo,

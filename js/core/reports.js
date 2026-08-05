@@ -106,7 +106,7 @@ App.Reports = (function () {
         ['Horas Finais', `${result.horasFinais.toFixed(2)}h`, 'Fator de Esforço', `x${result.fatorEsforco.toFixed(3)}`],
         ['Custo Interno (Equipe)', _moeda(result.custoInternoEquipe), 'Despesas Extras', _moeda(result.despesasExtras)],
         ['Custo Interno Total', _moeda(result.custoInternoTotal), 'Impostos (6%)', _moeda(result.imposto)],
-        ['Ref. Comercial', _moeda(result.valorReferenciaComercial), 'Custo x1.8', _moeda(result.valorMinimoPorCusto)],
+        ['Ref. Comercial', _moeda(result.valorReferenciaComercial), `Custo x${result.multiplicadorMinimoAplicado || state.settings.multiplicadorMinimo}`, _moeda(result.valorMinimoPorCusto)],
         ['Ticket Mínimo', _moeda(result.ticketMinimoComDespesas), 'Mark-up', `${result.markup.toFixed(2)}x`],
         ['Lucro Bruto', _moeda(result.lucrobruto), 'Lucro Líquido', _moeda(result.lucroLiquido)],
         ['Margem Bruta', _pct(result.margemBruta), 'Rentabilidade', _pct(result.rentabilidade)],

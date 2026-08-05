@@ -14,6 +14,8 @@ App.Config = Object.freeze({
   SEMANAS_MES: 4.3,
   DIAS_UTEIS_MES: 22,
   MULTIPLICADOR_MINIMO_CUSTO: 1.80,
+  MAX_FATOR_ESFORCO: 2.50,
+  MAX_MULTIPLICADOR_CUSTO: 3.00,
   STORAGE_KEY: 'favero_erp_v3',
 
   // ── Effort Multiplier Factors ───────────────────────────────────────────────

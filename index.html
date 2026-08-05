@@ -335,272 +335,258 @@
             </div>
           </div>
 
-          <!-- ── Modern Wizard ────────────────────────────────────── -->
-          <nav class="calc-wizard" aria-label="Etapas do projeto">
+          <!-- ── Dashboard Grid Layout ────────────────────────────────────── -->
+          <div class="dashboard-layout" id="dashboard-form">
+            <!-- ── Left Column: Form Inputs ─────────────────────────────── -->
+            <div class="dashboard-form-column">
 
-            <!-- Progress bar -->
-            <div class="calc-wizard-progress-wrap">
-              <div class="calc-wizard-progress-bar" id="wizard-progress-bar" style="width: 0%"></div>
+              <!-- DADOS DO PROJETO -->
+              <section class="dash-card">
+                <div class="dash-card-header">
+                  <div class="dash-card-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
+                  </div>
+                  <h3>Dados do Projeto</h3>
+                </div>
+                <div class="dash-card-body">
+                  <div class="grid-2">
+                    <div class="form-group modern-input-group">
+                      <label for="proj-cliente">Cliente</label>
+                      <input type="text" id="proj-cliente" placeholder="Nome da empresa ou pessoa" class="stt-input">
+                    </div>
+                    <div class="form-group modern-input-group">
+                      <label for="proj-nome">Nome do Projeto</label>
+                      <input type="text" id="proj-nome" placeholder="Ex: Galpão Logístico" class="stt-input">
+                    </div>
+                    <div class="form-group modern-input-group">
+                      <label for="proj-disciplina">Disciplina</label>
+                      <select id="proj-disciplina" class="stt-input"></select>
+                    </div>
+                    <div class="form-group modern-input-group">
+                      <label for="proj-edificacao">Tipo de Edificação</label>
+                      <select id="proj-edificacao" class="stt-input"></select>
+                    </div>
+                    <div class="form-group modern-input-group">
+                      <label for="proj-area">Área (m²)</label>
+                      <input type="text" id="proj-area" class="stt-input mask-number" placeholder="Ex: 1500" />
+                    </div>
+                    <div class="form-group modern-input-group">
+                      <label for="proj-cidade">Cidade</label>
+                      <input type="text" id="proj-cidade" class="stt-input" placeholder="Ex: São Paulo - SP" />
+                    </div>
+                    <div class="form-group modern-input-group" style="display:none;">
+                      <input type="date" id="proj-data" class="stt-input">
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- EQUIPE -->
+              <section class="dash-card">
+                <div class="dash-card-header">
+                  <div class="dash-card-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                  </div>
+                  <div style="flex:1;">
+                    <h3>Equipe de Projeto</h3>
+                    <p class="dash-card-sub" style="margin: 0; color: var(--text-muted); font-size: 13px;">Horas previstas por profissional</p>
+                  </div>
+                </div>
+                <div class="dash-card-body">
+                  <div id="dash-team-list" class="team-list-container">
+                    <!-- Preenchido via JS -->
+                  </div>
+                  <button type="button" id="btn-add-team-member" class="btn btn-ghost btn-sm" style="margin-top: 12px;">+ Adicionar Membro</button>
+                </div>
+              </section>
+
+              <!-- COMPLEXIDADE -->
+              <section class="dash-card">
+                <div class="dash-card-header">
+                  <div class="dash-card-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  </div>
+                  <h3>Fatores e Complexidade</h3>
+                </div>
+                <div class="dash-card-body" style="display: flex; flex-direction: column; gap: 24px;">
+                  
+                  <div class="grid-2">
+                    <!-- Simples / Normal / Complexo -->
+                    <div class="segmented-control-wrapper">
+                      <label style="font-weight: 500; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; display:block;">Nível Técnico</label>
+                      <div class="segmented-control">
+                        <input type="radio" id="comp-simples" name="proj-complexidade" value="0">
+                        <label for="comp-simples">Simples</label>
+                        <input type="radio" id="comp-normal" name="proj-complexidade" value="1" checked>
+                        <label for="comp-normal">Normal</label>
+                        <input type="radio" id="comp-complexo" name="proj-complexidade" value="2">
+                        <label for="comp-complexo">Complexo</label>
+                      </div>
+                    </div>
+
+                    <!-- Urgência -->
+                    <div class="segmented-control-wrapper">
+                      <label style="font-weight: 500; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; display:block;">Prazo / Urgência</label>
+                      <div class="segmented-control">
+                        <input type="radio" id="urg-normal" name="proj-urgencia" value="0" checked>
+                        <label for="urg-normal">Normal</label>
+                        <input type="radio" id="urg-urgente" name="proj-urgencia" value="1">
+                        <label for="urg-urgente">Urgente</label>
+                        <input type="radio" id="urg-muito-urgente" name="proj-urgencia" value="2">
+                        <label for="urg-muito-urgente">Crítico</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="grid-2">
+                    <!-- Aprovação -->
+                    <div class="checkbox-group-wrapper">
+                      <label style="font-weight: 500; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; display:block;">Aprovações Necessárias</label>
+                      <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label class="custom-checkbox">
+                          <input type="checkbox" id="aprov-prefeitura" class="proj-aprovacao-check">
+                          <span>Prefeitura</span>
+                        </label>
+                        <label class="custom-checkbox">
+                          <input type="checkbox" id="aprov-bombeiros" class="proj-aprovacao-check">
+                          <span>Bombeiros</span>
+                        </label>
+                        <label class="custom-checkbox">
+                          <input type="checkbox" id="aprov-vigilancia" class="proj-aprovacao-check">
+                          <span>Vigilância Sanitária</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- Revisões -->
+                    <div class="segmented-control-wrapper">
+                      <label style="font-weight: 500; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; display:block;">Expectativa de Revisões</label>
+                      <div class="segmented-control flex-col">
+                        <input type="radio" id="rev-nenhuma" name="proj-revisao" value="0" checked>
+                        <label for="rev-nenhuma">Nenhuma (Padrão)</label>
+                        <input type="radio" id="rev-algumas" name="proj-revisao" value="1">
+                        <label for="rev-algumas">Poucas</label>
+                        <input type="radio" id="rev-muitas" name="proj-revisao" value="2">
+                        <label for="rev-muitas">Muitas</label>
+                      </div>
+                    </div>
+                  </div>
+                  
+                </div>
+              </section>
+
+              <!-- DESPESAS EXTRAS -->
+              <section class="dash-card">
+                <div class="dash-card-header">
+                  <div class="dash-card-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                  </div>
+                  <h3>Despesas Extras (Opcional)</h3>
+                </div>
+                <div class="dash-card-body">
+                  <div class="grid-2">
+                    <div class="form-group modern-input-group">
+                      <label for="cost-art">Taxas / ART (R$)</label>
+                      <input type="text" id="cost-art" class="stt-input mask-currency" placeholder="R$ 0,00" />
+                    </div>
+                    <div class="form-group modern-input-group">
+                      <label for="cost-outros">Outras (Viagens, Terceiros) (R$)</label>
+                      <input type="text" id="cost-outros" class="stt-input mask-currency" placeholder="R$ 0,00" />
+                    </div>
+                  </div>
+                  <div class="indirect-costs-preview">
+                    <div class="indirect-costs-preview-header">
+                      <div>
+                        <strong>Custos indiretos do escritório</strong>
+                        <small>Aplicados automaticamente pelo rateio por hora.</small>
+                      </div>
+                      <span class="automatic-cost-badge">Automático</span>
+                    </div>
+                    <div id="dash-indirect-costs-list" class="indirect-costs-list"></div>
+                    <div class="indirect-costs-totals">
+                      <span>Mensal: <strong id="dash-indirect-monthly">R$ 0,00</strong></span>
+                      <span>Rateio/h: <strong id="dash-indirect-hour">R$ 0,00</strong></span>
+                      <span>No projeto: <strong id="dash-indirect-project">R$ 0,00</strong></span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section id="modal-transparency" class="result-breakdown-panel" aria-labelledby="result-modal-title" aria-live="polite">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <div>
+                      <span class="result-modal-eyebrow">Resultado do orçamento</span>
+                      <h2 id="result-modal-title">Como o preço foi calculado?</h2>
+                    </div>
+                    <button type="button" class="btn-close-modal" id="btn-close-result-modal" aria-label="Recolher resultado">✕</button>
+                  </div>
+                  <div class="modal-body" id="transparency-body">
+                    <!-- Gerado por JS (cascata) -->
+                  </div>
+                  <div class="result-modal-actions">
+                    <button type="button" id="btn-export-pdf" class="btn btn-ghost">Gerar PDF</button>
+                    <button type="button" id="btn-save-history" class="btn btn-primary">Salvar orçamento</button>
+                  </div>
+                </div>
+              </section>
+
             </div>
 
-            <!-- Steps -->
-            <div class="calc-wizard-steps" role="tablist">
+            <!-- ── Right Column: Sticky Summary Panel ───────────────────────── -->
+            <div class="dashboard-summary-column">
+              <div class="sticky-summary-panel">
+                <div class="summary-header">
+                  <h3>Resumo do Orçamento</h3>
+                </div>
+                
+                <div class="summary-body">
+                  <div class="summary-kpi-row">
+                    <span class="summary-kpi-label">Horas Totais</span>
+                    <strong class="summary-kpi-value" id="dash-horas">0h</strong>
+                  </div>
+                  <div class="summary-kpi-row">
+                    <span class="summary-kpi-label">Custo Interno Estimado</span>
+                    <strong class="summary-kpi-value" id="dash-custo">R$ 0,00</strong>
+                  </div>
+                  
+                  <hr class="summary-divider" />
+                  
+                  <div class="summary-kpi-row highlight">
+                    <span class="summary-kpi-label">Preço Sugerido</span>
+                    <strong class="summary-kpi-value primary" id="dash-preco-sugerido">R$ 0,00</strong>
+                  </div>
+                  <div class="summary-kpi-row">
+                    <span class="summary-kpi-label">Margem Líquida</span>
+                    <strong class="summary-kpi-value" id="dash-margem">0%</strong>
+                  </div>
+                  <div class="summary-kpi-row">
+                    <span class="summary-kpi-label">Lucro / ROI Estimado</span>
+                    <strong class="summary-kpi-value" id="dash-lucro">R$ 0,00</strong>
+                  </div>
 
-              <div class="calc-step active" role="tab" aria-selected="true" aria-controls="panel-0" data-step="0">
-                <div class="calc-step-connector calc-step-connector-left"></div>
-                <div class="calc-step-dot">
-                  <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  </div>
-                  <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
-                  </div>
-                </div>
-                <div class="calc-step-info">
-                  <span class="calc-step-num">Etapa 1</span>
-                  <span class="calc-step-name">Projeto</span>
-                </div>
-                <div class="calc-step-connector calc-step-connector-right"></div>
-              </div>
-
-              <div class="calc-step" role="tab" aria-selected="false" aria-controls="panel-1" data-step="1">
-                <div class="calc-step-connector calc-step-connector-left"></div>
-                <div class="calc-step-dot">
-                  <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                  </div>
-                  <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
-                  </div>
-                </div>
-                <div class="calc-step-info">
-                  <span class="calc-step-num">Etapa 2</span>
-                  <span class="calc-step-name">Equipe</span>
-                </div>
-                <div class="calc-step-connector calc-step-connector-right"></div>
-              </div>
-
-              <div class="calc-step" role="tab" aria-selected="false" aria-controls="panel-2" data-step="2">
-                <div class="calc-step-connector calc-step-connector-left"></div>
-                <div class="calc-step-dot">
-                  <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  </div>
-                  <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
+                  <!-- Campo Fechar Preço Manual -->
+                  <div class="summary-adjust-box">
+                    <label for="dash-preco-fechado" style="font-size:12px; font-weight:600; color:var(--text-secondary); display:block; margin-bottom:8px;">Arredondar / Fechar Preço Manual</label>
+                    <input type="text" id="dash-preco-fechado" class="stt-input mask-currency" placeholder="Ex: R$ 5.000,00" style="text-align: right;" />
                   </div>
                 </div>
-                <div class="calc-step-info">
-                  <span class="calc-step-num">Etapa 3</span>
-                  <span class="calc-step-name">Estimativa</span>
-                </div>
-                <div class="calc-step-connector calc-step-connector-right"></div>
-              </div>
 
-              <div class="calc-step" role="tab" aria-selected="false" aria-controls="panel-3" data-step="3">
-                <div class="calc-step-connector calc-step-connector-left"></div>
-                <div class="calc-step-dot">
-                  <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                  </div>
-                  <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
-                  </div>
-                </div>
-                <div class="calc-step-info">
-                  <span class="calc-step-num">Etapa 4</span>
-                  <span class="calc-step-name">Complexidade</span>
-                </div>
-                <div class="calc-step-connector calc-step-connector-right"></div>
-              </div>
-
-              <div class="calc-step" role="tab" aria-selected="false" aria-controls="panel-4" data-step="4">
-                <div class="calc-step-connector calc-step-connector-left"></div>
-                <div class="calc-step-dot">
-                  <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                  </div>
-                  <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
-                  </div>
-                </div>
-                <div class="calc-step-info">
-                  <span class="calc-step-num">Etapa 5</span>
-                  <span class="calc-step-name">Custos</span>
-                </div>
-                <div class="calc-step-connector calc-step-connector-right"></div>
-              </div>
-
-              <div class="calc-step" role="tab" aria-selected="false" aria-controls="panel-5" data-step="5">
-                <div class="calc-step-connector calc-step-connector-left"></div>
-                <div class="calc-step-dot">
-                  <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                  </div>
-                  <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
-                  </div>
-                </div>
-                <div class="calc-step-info">
-                  <span class="calc-step-num">Etapa 6</span>
-                  <span class="calc-step-name">Preço</span>
-                </div>
-                <div class="calc-step-connector calc-step-connector-right"></div>
-              </div>
-
-              <div class="calc-step" role="tab" aria-selected="false" aria-controls="panel-6" data-step="6">
-                <div class="calc-step-connector calc-step-connector-left"></div>
-                <div class="calc-step-dot">
-                  <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                  </div>
-                  <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
-                  </div>
-                </div>
-                <div class="calc-step-info">
-                  <span class="calc-step-num">Etapa 7</span>
-                  <span class="calc-step-name">Negociação</span>
-                </div>
-                <div class="calc-step-connector calc-step-connector-right"></div>
-              </div>
-
-              <div class="calc-step" role="tab" aria-selected="false" aria-controls="panel-7" data-step="7">
-                <div class="calc-step-connector calc-step-connector-left"></div>
-                <div class="calc-step-dot">
-                  <div class="calc-step-icon">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                  </div>
-                  <div class="calc-step-check">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
-                  </div>
-                </div>
-                <div class="calc-step-info">
-                  <span class="calc-step-num">Etapa 8</span>
-                  <span class="calc-step-name">Relatório</span>
-                </div>
-                <div class="calc-step-connector calc-step-connector-right"></div>
-              </div>
-
-            </div><!-- /calc-wizard-steps -->
-
-            <!-- Step counter badge -->
-            <div class="calc-wizard-counter" id="wizard-counter">
-              <span>Etapa <strong id="wizard-step-current">1</strong> de 8</span>
-              <span class="calc-wizard-pct" id="wizard-pct">0% concluído</span>
-            </div>
-
-          </nav><!-- /calc-wizard -->
-
-          <!-- ── Step Panels ───────────────────────────────────────── -->
-          <div class="step-panels-container">
-
-            <!-- STEP 1 — PROJETO -->
-            <section class="step-panel active" id="panel-0" role="tabpanel" aria-labelledby="step-tab-0">
-              <div id="step1-content"></div>
-              <div class="step-nav">
-                <div class="step-nav-left"></div>
-                <div class="step-nav-right">
-                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="1">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
-                </div>
-              </div>
-            </section>
-
-            <!-- STEP 2 — EQUIPE -->
-            <section class="step-panel" id="panel-1" role="tabpanel" aria-labelledby="step-tab-1">
-              <div id="step2-content"></div>
-              <div class="step-nav">
-                <div class="step-nav-left">
-                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
-                </div>
-                <div class="step-nav-right">
-                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="2">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
-                </div>
-              </div>
-            </section>
-
-            <!-- STEP 3 — ESTIMATIVA -->
-            <section class="step-panel" id="panel-2" role="tabpanel" aria-labelledby="step-tab-2">
-              <div id="step3-content"></div>
-              <div class="step-nav">
-                <div class="step-nav-left">
-                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
-                </div>
-                <div class="step-nav-right">
-                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="3">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
-                </div>
-              </div>
-            </section>
-
-            <!-- STEP 4 — COMPLEXIDADE -->
-            <section class="step-panel" id="panel-3" role="tabpanel" aria-labelledby="step-tab-3">
-              <div id="step4-content"></div>
-              <div class="step-nav">
-                <div class="step-nav-left">
-                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
-                </div>
-                <div class="step-nav-right">
-                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="4">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
-                </div>
-              </div>
-            </section>
-
-            <!-- STEP 5 — CUSTOS -->
-            <section class="step-panel" id="panel-4" role="tabpanel" aria-labelledby="step-tab-4">
-              <div id="step5-content"></div>
-              <div class="step-nav">
-                <div class="step-nav-left">
-                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="3"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
-                </div>
-                <div class="step-nav-right">
-                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="5">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
-                </div>
-              </div>
-            </section>
-
-            <!-- STEP 6 — PREÇO -->
-            <section class="step-panel" id="panel-5" role="tabpanel" aria-labelledby="step-tab-5">
-              <div id="step6-content"></div>
-              <div class="step-nav">
-                <div class="step-nav-left">
-                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="4"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
-                </div>
-                <div class="step-nav-right">
-                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="6">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
-                </div>
-              </div>
-            </section>
-
-            <!-- STEP 7 — NEGOCIAÇÃO -->
-            <section class="step-panel" id="panel-6" role="tabpanel" aria-labelledby="step-tab-6">
-              <div id="step7-content"></div>
-              <div class="step-nav">
-                <div class="step-nav-left">
-                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="5"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
-                </div>
-                <div class="step-nav-right">
-                  <button class="btn btn-primary btn-next-step calc-nav-btn" data-next="7">Avançar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
-                </div>
-              </div>
-            </section>
-
-            <!-- STEP 8 — RELATÓRIO -->
-            <section class="step-panel" id="panel-7" role="tabpanel" aria-labelledby="step-tab-7">
-              <div id="step8-content"></div>
-              <div class="step-nav">
-                <div class="step-nav-left">
-                  <button class="btn btn-secondary btn-prev-step calc-nav-btn" data-prev="6"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Voltar</button>
-                </div>
-                <div class="step-nav-right">
-                  <button id="btn-new-project-2" class="btn btn-ghost calc-nav-btn" onclick="App.Store.resetProject(); App.Main?.goToStep(0);">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Novo Projeto
+                <div class="summary-footer">
+                  <button id="btn-gerar-orcamento" class="btn btn-primary btn-full" style="padding: 14px; font-size: 16px;">
+                    Gerar Orçamento
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 8px;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </button>
+                  <button id="btn-show-transparency" class="btn btn-ghost btn-full" style="margin-top: 12px; font-size: 13px; color: var(--text-muted);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                    Como este preço foi calculado?
                   </button>
                 </div>
               </div>
-            </section>
 
-          </div><!-- /step-panels-container -->
+            </div>
+
+          </div><!-- /dashboard-layout -->
         </div><!-- /view-calculator -->
 
 
@@ -1318,13 +1304,13 @@
   <script src="js/core/charts.js?v=5"></script>
   <script src="js/core/reports.js?v=5"></script>
   <script src="js/utils/formatters.js?v=5"></script>
-  <script src="js/utils/ui.js?v=5"></script>
+  <script src="js/utils/ui.js?v=7"></script>
   <script src="js/services/supabase.js?v=5"></script>
   <script src="js/services/auth.js?v=5"></script>
   <script src="js/views/settings-ui.js?v=5"></script>
   <script src="js/views/users-ui.js?v=5"></script>
   <script src="js/router.js?v=5"></script>
-  <script src="js/main.js?v=5"></script>
+  <script src="js/main.js?v=6"></script>
 
   <!-- Utility scripts: office summary + keyboard detection -->
   <script>
@@ -1336,7 +1322,7 @@
         btnNewHeader.addEventListener('click', function () {
           if (confirm('Iniciar novo projeto? Os dados atuais não salvos serão perdidos.')) {
             App.Store.resetProject();
-            if (App.Main && typeof App.Main.goToStep === 'function') App.Main.goToStep(0);
+            if (App.Router && typeof App.Router.navigate === 'function') App.Router.navigate('calculator');
             App.UI.toast('Novo projeto iniciado.');
           }
         });

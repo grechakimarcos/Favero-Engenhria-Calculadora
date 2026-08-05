@@ -160,7 +160,7 @@ App.Auth = (function () {
     if (!isAdmin && (currentView === 'view-usuarios' || currentView === 'view-parametros')) {
       console.debug('[RBAC] Acesso negado à view restrita. Redirecionando para calculadora.');
       if (App.Router && typeof App.Router.navigate === 'function') {
-        App.Router.navigate('calculadora');
+        App.Router.navigate('calculator');
       }
     }
   }

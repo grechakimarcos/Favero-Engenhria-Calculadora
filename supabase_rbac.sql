@@ -90,11 +90,65 @@ USING (public.is_admin());
 DROP POLICY IF EXISTS "Users can update own basic profile" ON public.profiles;
 CREATE POLICY "Users can update own basic profile" 
 ON public.profiles FOR UPDATE 
-USING (auth.uid() = id);
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
+
+-- A policy de linha acima limita qual perfil o usuario pode atualizar, mas nao
+-- limita colunas. Este trigger impede alteracao de papel/status/bloqueio por
+-- usuarios comuns, inclusive quando a chamada e feita diretamente pela API.
+CREATE OR REPLACE FUNCTION public.protect_profile_privileged_fields()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.uid() IS NOT NULL
+     AND COALESCE(current_setting('app.profile_system_update', true), 'false') <> 'true'
+     AND NOT public.is_admin() AND (
+    NEW.role IS DISTINCT FROM OLD.role OR
+    NEW.status IS DISTINCT FROM OLD.status OR
+    NEW.locked_until IS DISTINCT FROM OLD.locked_until OR
+    NEW.failed_login_attempts IS DISTINCT FROM OLD.failed_login_attempts
+  ) THEN
+    RAISE EXCEPTION 'Sem permissao para alterar campos administrativos do perfil';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS protect_profile_privileged_fields_trigger ON public.profiles;
+CREATE TRIGGER protect_profile_privileged_fields_trigger
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.protect_profile_privileged_fields();
+
+-- RPC utilizada pelo painel administrativo. Excluir apenas public.profiles nao
+-- revoga o login; a remocao deve ocorrer em auth.users e o perfil cai em cascata.
+CREATE OR REPLACE FUNCTION public.delete_user_admin(target_user_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Apenas administradores podem excluir usuarios';
+  END IF;
+  IF target_user_id = auth.uid() THEN
+    RAISE EXCEPTION 'Nao e permitido excluir a propria conta administrativa';
+  END IF;
+
+  DELETE FROM auth.users WHERE id = target_user_id;
+  RETURN FOUND;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.delete_user_admin(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.delete_user_admin(uuid) TO authenticated;
 
 -- 5. Backfill (Opcional): Criar perfil para usuários que já existem na tabela auth.users mas não em profiles.
 INSERT INTO public.profiles (id, nome_completo, role)
-SELECT id, email, 'admin'
+SELECT id, email, 'visitante'
 FROM auth.users
 WHERE id NOT IN (SELECT id FROM public.profiles);
 
@@ -223,6 +277,7 @@ BEGIN
   SELECT id INTO v_user_id FROM auth.users WHERE email = p_email LIMIT 1;
   
   IF v_user_id IS NOT NULL THEN
+    PERFORM set_config('app.profile_system_update', 'true', true);
     UPDATE public.profiles
     SET failed_login_attempts = failed_login_attempts + 1
     WHERE id = v_user_id;
@@ -241,6 +296,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+  PERFORM set_config('app.profile_system_update', 'true', true);
   UPDATE public.profiles
   SET failed_login_attempts = 0,
       locked_until = null,
@@ -319,6 +375,14 @@ ON CONFLICT (key) DO UPDATE SET
 -- Ele apaga TUDO e reinicia com os dados corretos e únicos.
 
 -- Adiciona constraint UNIQUE em 'nome' para prevenir duplicatas futuras
+DELETE FROM public.config_colaboradores newer
+USING public.config_colaboradores older
+WHERE newer.nome = older.nome AND newer.ctid > older.ctid;
+
+DELETE FROM public.config_custos_indiretos newer
+USING public.config_custos_indiretos older
+WHERE newer.nome = older.nome AND newer.ctid > older.ctid;
+
 ALTER TABLE public.config_colaboradores
   DROP CONSTRAINT IF EXISTS config_colaboradores_nome_key;
 ALTER TABLE public.config_colaboradores
@@ -330,17 +394,22 @@ ALTER TABLE public.config_custos_indiretos
   ADD CONSTRAINT config_custos_indiretos_nome_key UNIQUE (nome);
 
 -- Limpa e repopula colaboradores (resolve duplicatas de execuções anteriores)
-DELETE FROM public.config_colaboradores;
+DELETE FROM public.config_colaboradores newer
+USING public.config_colaboradores older
+WHERE newer.nome = older.nome AND newer.ctid > older.ctid;
 INSERT INTO public.config_colaboradores (nome, cargo, custo_mensal, horas_mensais, produtividade)
 VALUES
   ('Reinaldo', 'Engenheiro Sênior', 8000, 180, 100),
   ('Adriel',   'Engenheiro Pleno',  2080, 120, 100),
-  ('Lucas',    'Técnico',           1400, 100, 100);
+  ('Lucas',    'Técnico',           1400, 100, 100)
+ON CONFLICT (nome) DO NOTHING;
 
 -- Limpa e repopula custos indiretos
-DELETE FROM public.config_custos_indiretos;
+DELETE FROM public.config_custos_indiretos newer
+USING public.config_custos_indiretos older
+WHERE newer.nome = older.nome AND newer.ctid > older.ctid;
 INSERT INTO public.config_custos_indiretos (nome, valor)
 VALUES
   ('Arieli (Administrativo)',   1499),
-  ('Estrutura (Aluguel/Infra)', 2595);
-
+  ('Estrutura (Aluguel/Infra)', 2595)
+ON CONFLICT (nome) DO NOTHING;

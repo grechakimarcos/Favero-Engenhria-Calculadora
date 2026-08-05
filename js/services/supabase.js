@@ -481,7 +481,12 @@ App.Supabase = (function () {
     const client = _getClient();
     if (!client) return { user: null, error: new Error('Supabase não inicializado.') };
     const options = displayName ? { data: { display_name: displayName } } : {};
-    const { data, error } = await client.auth.signUp({ email, password, options });
+    // Um cliente isolado evita que o cadastro substitua a sessao atual do
+    // administrador quando a confirmacao de e-mail estiver desativada.
+    const isolatedClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+    });
+    const { data, error } = await isolatedClient.auth.signUp({ email, password, options });
     return { user: data?.user || null, error };
   }
 

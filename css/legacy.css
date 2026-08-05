@@ -1316,6 +1316,7 @@ body.kbd-fade .kbd-bar {
   opacity: 0;
   transition: opacity 0.4s ease;
   background: var(--bg-base);
+  overflow-y: auto; /* allow scrolling if height is small */
 }
 
 #login-overlay.visible {
@@ -1448,6 +1449,7 @@ body.kbd-fade .kbd-bar {
   padding: 2rem;
   background: var(--bg-base);
   position: relative;
+  min-height: 100vh; /* guarantee it fills at least the viewport */
 }
 
 .modern-login-card {
@@ -1734,6 +1736,7 @@ body.kbd-fade .kbd-bar {
 
 /* Bloqueio de scroll na tela principal */
 body.auth-locked { overflow: hidden; }
+body.auth-locked .app-container { display: none; }
 
 /* ============================================================
    SPINNER (inline loading)

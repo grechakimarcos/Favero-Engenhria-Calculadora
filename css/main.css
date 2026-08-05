@@ -19,3 +19,6 @@
 
 /* 6. Premium polish — animations, utilities, modern overrides */
 @import url('custom.css');
+
+/* 7. New Dashboard Layout */
+@import url('dashboard.css');

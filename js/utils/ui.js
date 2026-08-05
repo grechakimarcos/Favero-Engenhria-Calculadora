@@ -104,6 +104,7 @@ App.UI = (function () {
   }
 
   function buildOptions(map, selected) {
+    if (!map) return '';
     return Object.entries(map)
       .map(([val, label]) => `<option value="${_escapeHtml(val)}" ${String(val) === String(selected) ? 'selected' : ''}>${_escapeHtml(label)}</option>`)
       .join('');
@@ -1103,8 +1104,237 @@ App.UI = (function () {
     });
   }
 
+  // ── Dashboard Layout Functions ─────────────────────────────────────────────
+  function populateDashboardSelects(state) {
+    const elDisciplina = document.getElementById('proj-disciplina');
+    let disciplinasMap = {};
+    try {
+      if (state && state.disciplinas) {
+        if (Array.isArray(state.disciplinas)) {
+           state.disciplinas.forEach(d => disciplinasMap[d.id || d.nome] = d.nome);
+        } else {
+           Object.keys(state.disciplinas).forEach(k => {
+             disciplinasMap[k] = state.disciplinas[k].nome || state.disciplinas[k];
+           });
+        }
+      }
+    } catch(e) { console.error('Erro ao formatar disciplinas', e); }
+
+    if (elDisciplina) elDisciplina.innerHTML = buildOptions(disciplinasMap, state?.project?.disciplina);
+    
+    const elEdificacao = document.getElementById('proj-edificacao');
+    if (elEdificacao) elEdificacao.innerHTML = buildOptions(Config.LABELS_EDIFICACAO || {}, state?.project?.tipoEdificacao);
+
+    // Mantem o formulario sincronizado com o estado (inclusive no primeiro
+    // carregamento e depois de iniciar um novo projeto).
+    const values = {
+      'proj-cliente': state?.project?.cliente || '',
+      'proj-nome': state?.project?.nome || '',
+      'proj-area': state?.project?.area || '',
+      'proj-cidade': state?.project?.cidade || '',
+      'cost-art': state?.costs?.art || '',
+      'cost-outros': state?.costs?.outros || '',
+      'dash-preco-fechado': state?.project?.ajusteComercial?.valorFechado || '',
+    };
+    Object.entries(values).forEach(([id, value]) => {
+      const el = document.getElementById(id);
+      if (el && el !== document.activeElement) el.value = value;
+    });
+
+    const checkedValues = {
+      'proj-complexidade': state?.project?.complexidade ?? 1,
+      'proj-revisao': state?.project?.revisao ?? 0,
+      'proj-urgencia': state?.project?.fatorUrgencia ?? 0,
+    };
+    Object.entries(checkedValues).forEach(([name, value]) => {
+      document.querySelectorAll(`input[name="${name}"]`).forEach(el => {
+        el.checked = String(el.value) === String(value);
+      });
+    });
+
+    const approvalCount = Number(state?.project?.aprovacao) || 0;
+    const approvalEls = ['aprov-prefeitura', 'aprov-bombeiros', 'aprov-vigilancia']
+      .map(id => document.getElementById(id)).filter(Boolean);
+    // O modelo persiste apenas a quantidade de aprovacoes, nao quais orgaos.
+    // Hidratamos uma selecao inicial, mas preservamos a escolha concreta feita
+    // pelo usuario durante as renderizacoes reativas seguintes.
+    if (!approvalEls.some(el => el.checked) && approvalCount > 0) {
+      approvalEls.forEach((el, index) => { el.checked = index < approvalCount; });
+    } else if (approvalCount === 0) {
+      approvalEls.forEach(el => { el.checked = false; });
+    }
+  }
+
+  function renderDashboardTeam(state) {
+    const container = document.getElementById('dash-team-list');
+    if (!container) return;
+
+    if (state.team.length === 0) {
+      container.innerHTML = `<div style="text-align:center; padding: 1rem; color:var(--text-muted); font-size:13px;">Nenhum membro na equipe.</div>`;
+      return;
+    }
+
+    container.innerHTML = state.team.map((membro, idx) => {
+      const colab = state.collaborators.find(c => c.id === membro.colaboradorId);
+      const custoHora = colab
+        ? App.Calculator.custoRealHoraPorColaborador(
+            colab, state.indirectCosts, state.collaborators
+          )
+        : 0;
+      const horasMensais = Number(colab?.horasMensais) || 0;
+      const custoDiretoHora = horasMensais > 0
+        ? Math.max(0, Number(colab?.custoMensal) || 0) / horasMensais
+        : 0;
+      const custoParticipacao = custoHora * (Number(membro.horas) || 0);
+      return `
+        <div class="team-member-row" data-idx="${idx}">
+          <div style="flex: 2; min-width: 180px;">
+            <select class="dash-team-select stt-input" data-idx="${idx}" style="width: 100%; padding: 0.4rem; font-size: 13px;">
+              ${state.collaborators.map(c => 
+                `<option value="${c.id}" ${c.id === membro.colaboradorId ? 'selected' : ''}>${c.nome} — ${c.cargo}</option>`
+              ).join('')}
+            </select>
+            <div class="team-cost-breakdown" title="Custo real por hora: remuneracao, rateio dos custos indiretos e produtividade">
+              <span>Direto/h: <strong>${moeda(custoDiretoHora)}</strong></span>
+              <span>Real/h: <strong data-team-cost-hour>${moeda(custoHora)}</strong></span>
+              <span>Participacao: <strong data-team-cost-total>${moeda(custoParticipacao)}</strong></span>
+            </div>
+          </div>
+          <div style="flex: 1; display:flex; align-items:center; gap: 8px;">
+            <input type="number" class="dash-team-hours stt-input" data-idx="${idx}" value="${membro.horas || 0}" min="0" step="1" style="width: 60px; padding: 0.4rem; text-align:center;" /> <span style="font-size:12px;color:var(--text-secondary);">h</span>
+          </div>
+          <button type="button" class="btn-remove-team-member" data-idx="${idx}" style="background:none;border:none;color:var(--danger);cursor:pointer;padding:4px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function updateDashboardTeamCosts(state) {
+    document.querySelectorAll('.team-member-row').forEach((row, idx) => {
+      const membro = state.team[idx];
+      const colab = membro
+        ? state.collaborators.find(c => c.id === membro.colaboradorId)
+        : null;
+      const custoHora = colab
+        ? App.Calculator.custoRealHoraPorColaborador(
+            colab, state.indirectCosts, state.collaborators
+          )
+        : 0;
+      const total = custoHora * Math.max(0, Number(membro?.horas) || 0);
+      const hourEl = row.querySelector('[data-team-cost-hour]');
+      const totalEl = row.querySelector('[data-team-cost-total]');
+      if (hourEl) hourEl.textContent = moeda(custoHora);
+      if (totalEl) totalEl.textContent = moeda(total);
+    });
+  }
+
+  function updateDashboardResults(state, result) {
+    // O calculador pode retornar null enquanto os dados mestres (disciplinas)
+    // ainda estao sendo carregados do Supabase.
+    if (!result) return;
+
+    const elHoras = document.getElementById('dash-horas');
+    if (elHoras) elHoras.textContent = horas(result.horasFinais);
+
+    const elCusto = document.getElementById('dash-custo');
+    if (elCusto) elCusto.textContent = moeda(result.custoInternoTotal);
+
+    const elPreco = document.getElementById('dash-preco-sugerido');
+    if (elPreco) elPreco.textContent = moeda(result.valorFinal);
+
+    const elMargem = document.getElementById('dash-margem');
+    if (elMargem) {
+      elMargem.textContent = pct(result.margemLiquida);
+      elMargem.style.color = result.margemLiquida < 0 ? 'var(--danger)' : 'inherit';
+    }
+
+    const elLucro = document.getElementById('dash-lucro');
+    if (elLucro) {
+      elLucro.textContent = moeda(result.lucroLiquido);
+      elLucro.style.color = result.lucroLiquido < 0 ? 'var(--danger)' : 'inherit';
+    }
+
+    const indirectList = document.getElementById('dash-indirect-costs-list');
+    if (indirectList) {
+      const custos = Array.isArray(state.indirectCosts) ? state.indirectCosts : [];
+      indirectList.innerHTML = custos.length
+        ? custos.map(c => `
+            <div class="indirect-cost-row">
+              <span>${_escapeHtml(c.nome || 'Custo indireto')}</span>
+              <strong>${moeda(Number(c.valor) || 0)}/mês</strong>
+            </div>
+          `).join('')
+        : '<div class="indirect-cost-empty">Nenhum custo indireto configurado.</div>';
+    }
+    const indirectMonthly = document.getElementById('dash-indirect-monthly');
+    const indirectHour = document.getElementById('dash-indirect-hour');
+    const indirectProject = document.getElementById('dash-indirect-project');
+    if (indirectMonthly) indirectMonthly.textContent = moeda(result.totalCustosIndiretos);
+    if (indirectHour) indirectHour.textContent = moeda(result.rateioHora);
+    if (indirectProject) indirectProject.textContent = moeda(result.custoIndiretoRateadoProjeto);
+
+    // Modal Transparência Content
+    const modalBody = document.getElementById('transparency-body');
+    if (modalBody) {
+      modalBody.innerHTML = `
+        <div class="transparency-step">
+          <span>Horas Totais (Equipe)</span>
+          <span class="transparency-val">${horas(result.horasFinais)}</span>
+        </div>
+        <div class="transparency-step">
+          <span>Custo Direto da Equipe</span>
+          <span class="transparency-val">${moeda(result.custoDiretoEquipe)}</span>
+        </div>
+        <div class="transparency-step">
+          <span>Custos Indiretos Rateados</span>
+          <span class="transparency-val">${moeda(result.custoIndiretoRateadoProjeto)}</span>
+        </div>
+        <div class="transparency-step">
+          <span>Despesas Extras</span>
+          <span class="transparency-val">${moeda(result.despesasExtras)}</span>
+        </div>
+        <div class="transparency-step">
+          <span><strong>Custo Total Interno</strong></span>
+          <span class="transparency-val"><strong>${moeda(result.custoInternoTotal)}</strong></span>
+        </div>
+        <hr style="border: 0; border-bottom: 1px dashed var(--border-subtle); margin: 12px 0;">
+        <div class="transparency-step">
+          <span>Origem das Horas</span>
+          <span class="transparency-val">${result.fonteHoras === 'equipe' ? 'Equipe' : result.fonteHoras === 'manual' ? 'Manual' : 'Estimativa por área'}</span>
+        </div>
+        <div class="transparency-step">
+          <span>Fator Técnico Aplicado</span>
+          <span class="transparency-val">x${num(result.fatorEsforco, 2)}</span>
+        </div>
+        <div class="transparency-step">
+          <span>Urgência Comercial</span>
+          <span class="transparency-val">x${num(result.fatores.urgencia, 2)}</span>
+        </div>
+        <div class="transparency-step">
+          <span>Multiplicador Mínimo do Custo</span>
+          <span class="transparency-val">x${num(result.multiplicadorMinimoAplicado, 2)}</span>
+        </div>
+        <div class="transparency-step">
+          <span>Markup Real</span>
+          <span class="transparency-val">${num(result.markup, 2)}x</span>
+        </div>
+        <div class="transparency-step">
+          <span>Impostos Estimados</span>
+          <span class="transparency-val">${pct((state.settings?.impostoSimples || 0) * 100)}</span>
+        </div>
+        <div class="transparency-step" style="font-size: 1.1rem; color: var(--primary); margin-top: 12px;">
+          <span><strong>Preço Final Sugerido</strong></span>
+          <span class="transparency-val"><strong>${moeda(result.valorFinal)}</strong></span>
+        </div>
+      `;
+    }
+  }
+
   return {
     moeda, pct, horas, num, unmask, initMasks,
+    populateDashboardSelects, renderDashboardTeam, updateDashboardTeamCosts, updateDashboardResults,
     updateStepper,
     renderStep1, renderStep2, renderStep3, renderStep4, renderStep5, renderStep6, renderStep7, renderStep8,
     renderColaboradoresTable,

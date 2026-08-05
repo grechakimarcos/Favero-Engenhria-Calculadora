@@ -74,7 +74,7 @@ App.SettingsUI = (function () {
             <div class="stt-input-wrap">
               <span class="stt-prefix">×</span>
               <input class="stt-input" type="number" id="cfg-multiplicador"
-                value="${settings.multiplicadorMinimo}" min="1" max="5" step="0.05"
+                value="${settings.multiplicadorMinimo}" min="1" max="3" step="0.05"
                 aria-label="Multiplicador mínimo de custo" />
             </div>
             <p class="stt-hint">Fator mínimo aplicado sobre os custos diretos para garantir margem.</p>
@@ -311,7 +311,10 @@ App.SettingsUI = (function () {
     // Read financial inputs
     const metaMensal          = parseFloat(document.getElementById('cfg-meta-mensal')?.value) || 30000;
     const impostoSimplesPct   = parseFloat(document.getElementById('cfg-imposto')?.value) || 6;
-    const multiplicadorMinimo = parseFloat(document.getElementById('cfg-multiplicador')?.value) || 1.80;
+    const multiplicadorMinimo = Math.min(
+      App.Config.MAX_MULTIPLICADOR_CUSTO || 3,
+      Math.max(1, parseFloat(document.getElementById('cfg-multiplicador')?.value) || 1.80)
+    );
 
     App.Store.setState({
       settings: {
