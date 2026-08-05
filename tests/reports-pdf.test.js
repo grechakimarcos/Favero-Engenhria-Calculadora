@@ -28,6 +28,7 @@ App.Supabase = {
     };
   },
 };
+App.Assets = { pdfLogo: 'data:image/png;base64,RF_LOGO_TEST' };
 
 vm.runInThisContext(fs.readFileSync('js/core/reports.js', 'utf8'), {
   filename: 'js/core/reports.js',

@@ -123,6 +123,11 @@ App.Reports = (function () {
 
   function _loadLogo() {
     if (_logoPromise) return _logoPromise;
+    const embeddedLogo = App.Assets?.pdfLogo;
+    if (typeof embeddedLogo === 'string' && embeddedLogo.startsWith('data:image/png;base64,')) {
+      _logoPromise = Promise.resolve(embeddedLogo);
+      return _logoPromise;
+    }
     if (typeof Image === 'undefined') return Promise.resolve(null);
     _logoPromise = new Promise((resolve, reject) => {
       const logo = new Image();
