@@ -1473,17 +1473,16 @@ body.kbd-fade .kbd-bar {
   margin-bottom: 2rem;
 }
 
-.login-logo-mobile {
-  display: none;
-  margin-bottom: 1.5rem;
+.login-logo-static {
+  display: flex;
+  justify-content: center;
+  margin: -0.5rem 0 1.5rem;
 }
-.login-logo-mobile img {
-  width: 40px;
-  height: 40px;
-  background: rgba(255,255,255,0.05);
-  padding: 6px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.1);
+.login-logo-static img {
+  display: block;
+  width: clamp(88px, 24vw, 120px);
+  height: auto;
+  object-fit: contain;
 }
 
 .login-card-header h2 {
@@ -1722,8 +1721,8 @@ body.kbd-fade .kbd-bar {
   .login-left-panel {
     display: none;
   }
-  .login-logo-mobile {
-    display: block;
+  .login-logo-static {
+    display: flex;
   }
   .login-right-panel {
     padding: 1rem;
