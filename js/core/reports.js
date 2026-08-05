@@ -105,13 +105,37 @@ App.Reports = (function () {
     return window.jspdf.jsPDF;
   }
 
+  function _imageToPngDataUrl(image) {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') return image;
+    const width = image.naturalWidth || image.width;
+    const height = image.naturalHeight || image.height;
+    if (!width || !height) throw new Error('A logo carregada não possui dimensões válidas.');
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('O navegador não conseguiu preparar a logo para o PDF.');
+    context.drawImage(image, 0, 0, width, height);
+    const dataUrl = canvas.toDataURL('image/png');
+    if (!dataUrl.startsWith('data:image/png')) throw new Error('A conversão da logo para PNG falhou.');
+    return dataUrl;
+  }
+
   function _loadLogo() {
     if (_logoPromise) return _logoPromise;
     if (typeof Image === 'undefined') return Promise.resolve(null);
-    _logoPromise = new Promise(resolve => {
+    _logoPromise = new Promise((resolve, reject) => {
       const logo = new Image();
-      logo.onload = () => resolve(logo);
-      logo.onerror = () => resolve(null);
+      logo.onload = () => {
+        try {
+          // jsPDF recebe a imagem já incorporada em base64. Isso evita que ele
+          // tente reler a URL do arquivo durante a geração do documento.
+          resolve(_imageToPngDataUrl(logo));
+        } catch (error) {
+          reject(error);
+        }
+      };
+      logo.onerror = () => reject(new Error('Não foi possível carregar a logo do cabeçalho do PDF.'));
       logo.alt = 'Logo RF';
       logo.src = typeof document !== 'undefined'
         ? new URL(PDF_LOGO_PATH, document.baseURI).href
@@ -150,6 +174,7 @@ App.Reports = (function () {
         textX = 42;
       } catch (error) {
         console.warn('[Reports] Logo não pôde ser adicionada ao PDF:', error);
+        throw new Error('Não foi possível inserir a logo no cabeçalho do PDF.');
       }
     }
     doc.setTextColor(255, 255, 255);

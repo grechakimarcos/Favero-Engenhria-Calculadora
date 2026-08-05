@@ -36,6 +36,11 @@ vm.runInThisContext(fs.readFileSync('js/core/reports.js', 'utf8'), {
 const pdfInstances = [];
 
 class FakeImage {
+  constructor() {
+    this.naturalWidth = 500;
+    this.naturalHeight = 500;
+  }
+
   set src(value) {
     this._src = value;
     queueMicrotask(() => this.onload?.());
@@ -295,6 +300,18 @@ function capturedText(doc) {
 beforeEach(() => {
   pdfInstances.length = 0;
   global.Image = FakeImage;
+  global.document = {
+    baseURI: 'https://example.test/calculadora/index.html',
+    createElement(tagName) {
+      assert.equal(tagName, 'canvas');
+      return {
+        width: 0,
+        height: 0,
+        getContext: () => ({ drawImage() {} }),
+        toDataURL: () => 'data:image/png;base64,RF_LOGO_TEST',
+      };
+    },
+  };
   window.jspdf = { jsPDF: FakeJsPDF };
 });
 
@@ -352,7 +369,7 @@ test('exportarOrcamentoCliente inclui apenas dados comerciais e salva nome sanit
   assert.ok(doc, 'o jsPDF deveria ter sido instanciado');
   assert.equal(filename, doc.savedFilename);
   assert.equal(doc.images.length, 1, 'a logo deve ser adicionada ao cabeçalho');
-  assert.equal(doc.images[0][0].src, 'assets/Logo_RF_white.png');
+  assert.equal(doc.images[0][0], 'data:image/png;base64,RF_LOGO_TEST');
   assert.match(filename, /^Orcamento_Cliente_ProjetoLoja_Norte_ORC-20260805-\d{5}\.pdf$/);
   assert.doesNotMatch(filename, /[<>:"/\\|?*\x00-\x1F]/);
 
