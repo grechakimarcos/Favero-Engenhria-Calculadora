@@ -1305,8 +1305,28 @@ App.UI = (function () {
           <span class="transparency-val">${result.fonteHoras === 'equipe' ? 'Equipe' : result.fonteHoras === 'manual' ? 'Manual' : 'Estimativa por área'}</span>
         </div>
         <div class="transparency-step">
-          <span>Fator Técnico Aplicado</span>
+          <span>Fator Técnico do Escopo</span>
+          <span class="transparency-val">x${num(result.fatorTecnicoEscopo, 2)}</span>
+        </div>
+        <div class="transparency-step">
+          <span>Fator Aplicado nas Horas</span>
           <span class="transparency-val">x${num(result.fatorEsforco, 2)}</span>
+        </div>
+        <div class="transparency-step">
+          <span>Tipo de Edificação</span>
+          <span class="transparency-val">x${num(result.fatores.edificacao, 2)}</span>
+        </div>
+        <div class="transparency-step">
+          <span>Nível Técnico</span>
+          <span class="transparency-val">x${num(result.fatores.complexidade, 2)}</span>
+        </div>
+        <div class="transparency-step">
+          <span>Aprovações</span>
+          <span class="transparency-val">x${num(result.fatores.aprovacao, 2)}</span>
+        </div>
+        <div class="transparency-step">
+          <span>Revisões</span>
+          <span class="transparency-val">x${num(result.fatores.revisao, 2)}</span>
         </div>
         <div class="transparency-step">
           <span>Urgência Comercial</span>
@@ -1316,6 +1336,16 @@ App.UI = (function () {
           <span>Multiplicador Mínimo do Custo</span>
           <span class="transparency-val">x${num(result.multiplicadorMinimoAplicado, 2)}</span>
         </div>
+        ${result.precoManualAplicado ? `
+        <div class="transparency-step" style="color: var(--warning);">
+          <span>Preço Manual</span>
+          <span class="transparency-val">Substituindo o valor calculado</span>
+        </div>` : ''}
+        ${result.ajusteEdificacaoLimitado ? `
+        <div class="transparency-step" style="color: var(--warning);">
+          <span>Limite do desconto/acréscimo</span>
+          <span class="transparency-val">${result.determinante}</span>
+        </div>` : ''}
         <div class="transparency-step">
           <span>Markup Real</span>
           <span class="transparency-val">${num(result.markup, 2)}x</span>

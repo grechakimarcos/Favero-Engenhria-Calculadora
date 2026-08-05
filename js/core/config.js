@@ -21,7 +21,9 @@ App.Config = Object.freeze({
   // ── Effort Multiplier Factors ───────────────────────────────────────────────
   FATORES_REVISAO: { 0: 1.00, 1: 1.10, 2: 1.20, 3: 1.35, 4: 1.50 },
   FATORES_APROVACAO: { 0: 1.00, 1: 1.10, 2: 1.20, 3: 1.35 },
-  FATORES_COMPLEXIDADE: { 1: 1.00, 2: 1.15, 3: 1.30, 4: 1.50, 5: 1.80 },
+  // Dashboard atual: 0 = simples, 1 = normal, 2 = complexo.
+  // Chaves 3-5 permanecem para compatibilidade com orcamentos antigos.
+  FATORES_COMPLEXIDADE: { 0: 0.90, 1: 1.00, 2: 1.15, 3: 1.30, 4: 1.50, 5: 1.80 },
   FATORES_TIPO: { fluxo: 0.90, estrategico: 0.85, padrao: 1.00, premium: 1.20, problema: 1.35 },
   FATORES_EDIFICACAO: { casa: 1.00, predio: 1.20, comercio: 0.90 },
   FATORES_RISCO: { 0: 0.00, 1: 0.10, 2: 0.20, 3: 0.35, 4: 0.50 },
@@ -47,8 +49,9 @@ App.Config = Object.freeze({
     3: 'Complexa +35%',
   },
   LABELS_COMPLEXIDADE: {
-    1: 'Simples',
-    2: 'Médio +15%',
+    0: 'Simples -10%',
+    1: 'Normal',
+    2: 'Complexo +15%',
     3: 'Alto padrão +30%',
     4: 'Complexo +50%',
     5: 'Muito complexo +80%',

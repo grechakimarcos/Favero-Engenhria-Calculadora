@@ -77,13 +77,14 @@ App.Calculator = (function () {
 
     const area = numeroSeguro(project.area);
     if (area > 0) {
-      // Economies of scale for large areas
+      // Curva continua de economia de escala: evita quedas bruscas ao passar
+      // de 300 para 301 m2 ou de 1000 para 1001 m2.
       let fatorEscala = 1.0;
-      if (area > 1000) fatorEscala = 0.70;
-      else if (area > 300) fatorEscala = 0.85;
+      if (area > 300) {
+        fatorEscala = Math.max(0.70, Math.pow(area / 300, -0.12));
+      }
 
-      // NOTE: fatorEdif was removed from here and moved to calcularFatorEsforco
-      // so it applies regardless of whether hours come from area, manual, or team.
+      // Edificacao e aplicada depois, uma unica vez, na formacao do preco.
       const horasBase = area * horasPorM2 * fatorEscala;
       return { horasBase, fonte: 'area', horasPorM2 };
     }
@@ -94,8 +95,7 @@ App.Calculator = (function () {
   // ── Effort Multiplier ─────────────────────────────────────────────────────
 
   function calcularFatorEsforco(project) {
-    // fatorEdif moved here from calcularHorasBase so it ALWAYS applies
-    // regardless of whether hours come from area, manual input, or team.
+    // Edificacao e separada do fator tecnico para manter percentuais exatos.
     const fEdif  = Config.FATORES_EDIFICACAO[project.tipoEdificacao] || 1.0;
     const fRev   = Config.FATORES_REVISAO[project.revisao]          || 1;
     const fAprov = Config.FATORES_APROVACAO[project.aprovacao]      || 1;
@@ -112,13 +112,14 @@ App.Calculator = (function () {
     
     const fTipo  = Config.FATORES_TIPO[project.tipoComercial]        || 1.0;
     
+    // Edificacao fica fora do fator tecnico: ela e aplicada uma unica vez
+    // sobre a referencia comercial, garantindo -10%/+20% exatos.
     const totalSemLimite = 1
-      + (fEdif - 1) + (fRev - 1) + (fAprov - 1)
-      + (fCmp - 1) + (fRisco - 1);
+      + (fRev - 1) + (fAprov - 1) + (fCmp - 1) + (fRisco - 1);
     const total = Math.min(Config.MAX_FATOR_ESFORCO || 2.5, Math.max(0.5, totalSemLimite));
 
     return { fEdif, fRev, fAprov, fCmp, fRisco, fUrg, fTipo,
-             total, totalSemLimite, limitado: total < totalSemLimite };
+             total, totalSemLimite, limitado: Math.abs(total - totalSemLimite) > 0.000001 };
   }
 
   // ── Main Calculation Engine ────────────────────────────────────────────────
@@ -130,8 +131,12 @@ App.Calculator = (function () {
    */
   function calcularResultado(state) {
     const project = state.project || {};
-    const team = Array.isArray(state.team) ? state.team : [];
     const collaborators = Array.isArray(state.collaborators) ? state.collaborators : [];
+    const rawTeam = Array.isArray(state.team) ? state.team : [];
+    const collaboratorIds = new Set(collaborators.map(c => c.id));
+    // Entradas antigas que apontam para colaboradores removidos nao podem
+    // gerar horas sem custo.
+    const team = rawTeam.filter(t => collaboratorIds.has(t?.colaboradorId));
     const indirectCosts = Array.isArray(state.indirectCosts) ? state.indirectCosts : [];
     const disciplinas = state.disciplinas || {};
     const costs = state.costs || {};
@@ -144,9 +149,10 @@ App.Calculator = (function () {
     // 1. Hours
     const { horasBase, fonte, horasPorM2 } = calcularHorasBase(project, team, state);
     const esforco = calcularFatorEsforco(project);
-    // Horas distribuidas pela equipe ou informadas manualmente ja sao finais.
-    // Aplicar os fatores novamente contaria o mesmo esforco duas vezes.
+    // Horas manuais/equipe sao finais. Na estimativa por area, os fatores
+    // tecnicos ajustam horas; nas demais fontes ajustam somente a referencia.
     const fatorEsforco = fonte === 'area' ? esforco.total : 1;
+    const fatorTecnicoReferencia = fonte === 'area' ? 1 : esforco.total;
     const horasFinais = horasBase * fatorEsforco;
 
     // 2. Team cost breakdown
@@ -232,6 +238,10 @@ App.Calculator = (function () {
       : 0;
     // fatorTipo already captured inside esforco — reuse for clarity
     const fatorTipo = esforco.fTipo;
+    const fatorReferenciaTotal =
+      fatorTecnicoReferencia * esforco.fEdif * fatorTipo * esforco.fUrg;
+    const fatorTicketTotal =
+      esforco.total * esforco.fEdif * fatorTipo * esforco.fUrg;
 
     // 5. Final price (max of three candidates)
     // 5. Final price base (max of three candidates)
@@ -242,10 +252,19 @@ App.Calculator = (function () {
       Config.MAX_MULTIPLICADOR_CUSTO || 3
     );
     const impostoSimples = numeroSeguro(settings.impostoSimples, Config.IMPOSTO_SIMPLES, 0, 0.5);
-    const valorMinimoPorCusto      = custoInternoTotal * multiplicadorMinimo;
-    const ticketMinimoComDespesas  = numeroSeguro(d.ticketMinimo) + despesasExtras;
+    // Despesas reembolsaveis entram depois do markup e nao devem ser
+    // multiplicadas novamente.
+    const valorMinimoPorCusto      = (custoInternoEquipe * multiplicadorMinimo) + despesasExtras;
+    // O ticket e a base minima da disciplina, portanto acompanha o escopo.
+    // O piso de custo continua sendo a protecao financeira absoluta.
+    const ticketMinimoComDespesas  =
+      (numeroSeguro(d.ticketMinimo) * fatorTicketTotal) + despesasExtras;
     // Urgencia remunera a compressao do prazo sem criar horas ficticias.
-    const valorReferenciaComercial = (horasFinais * valorHoraComercial * fatorTipo * esforco.fUrg) + despesasExtras;
+    const valorReferenciaComercial = (
+      horasFinais
+      * valorHoraComercial
+      * fatorReferenciaTotal
+    ) + despesasExtras;
 
     const valorFinalBase = Math.max(valorReferenciaComercial, valorMinimoPorCusto, ticketMinimoComDespesas);
     
@@ -272,6 +291,9 @@ App.Calculator = (function () {
     const markup        = custoInternoTotal > 0 ? valorFinal / custoInternoTotal : 0;
     
     const margemReal    = margemLiquida; // alias claro para a UI de fechamento
+    const precoManualAplicado = Boolean(
+      ajuste.valorFechado && Number(ajuste.valorFechado) > 0
+    );
 
     // Renamed from 'pontoEquilibrio': this is the minimum price per hour,
     // not the classic break-even point (which would be the monthly fixed costs).
@@ -304,6 +326,22 @@ App.Calculator = (function () {
       determinante = '🛡️ Ticket Mínimo da Disciplina';
     }
 
+    const referenciaDeterminante =
+      Math.abs(valorFinalBase - valorReferenciaComercial) < EPS;
+    const custoDeterminante =
+      Math.abs(valorFinalBase - valorMinimoPorCusto) < EPS;
+    const ajusteEdificacaoLimitado =
+      !precoManualAplicado && Math.abs(esforco.fEdif - 1) > EPS && custoDeterminante;
+    const ajusteTecnicoLimitado =
+      !precoManualAplicado && fonte !== 'area'
+      && Math.abs(esforco.total - 1) > EPS && custoDeterminante;
+    if (ajusteEdificacaoLimitado) {
+      alertas.push({
+        tipo: 'warning',
+        msg: `O fator de edificação foi calculado, mas o preço final ficou limitado por: ${determinante}.`,
+      });
+    }
+
     // 9. Office summary
     const totalH = totalHorasProdutivas(collaborators);
     const totalCD = totalCustosDiretos(collaborators);
@@ -313,6 +351,7 @@ App.Calculator = (function () {
     return {
       // Hours
       horasPorM2, horasBase, horasFinais, fonteHoras: fonte, fatorEsforco,
+      fatorTecnicoReferencia,
       // Individual effort factors (for transparent UI display)
       fatores: {
         edificacao: esforco.fEdif,
@@ -325,15 +364,19 @@ App.Calculator = (function () {
       },
       fatorEsforcoSemLimite: esforco.totalSemLimite,
       fatorEsforcoLimitado: esforco.limitado,
+      fatorTecnicoEscopo: esforco.total,
       multiplicadorMinimoAplicado: multiplicadorMinimo,
+      ajusteEdificacaoLimitado,
+      ajusteTecnicoLimitado,
       // Cost
       custoInternoEquipe, custoDiretoEquipe, custoIndiretoRateadoProjeto,
       despesasExtras, custoInternoTotal,
       // Pricing candidates
       valorHoraComercial, valorReferenciaComercial, valorMinimoPorCusto, ticketMinimoComDespesas,
       fatorTipo,
+      fatorReferenciaTotal, fatorTicketTotal,
       // Final
-      valorFinalBase, valorFinal, imposto, valorLiquido,
+      valorFinalBase, valorFinal, imposto, valorLiquido, precoManualAplicado,
       // KPIs
       lucrobruto, lucroLiquido, margemBruta, margemLiquida, margemReal, rentabilidade, markup,
       custoHoraMinimo,          // renamed from pontoEquilibrio
